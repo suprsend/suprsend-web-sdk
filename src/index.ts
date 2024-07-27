@@ -1,4 +1,4 @@
-import { SuprSendOptions, Dictionary } from './interface';
+import { SuprSendOptions, Dictionary, EmitterEvents } from './interface';
 import ApiClient from './api';
 import {
   uuid,
@@ -11,6 +11,7 @@ import {
 import User from './user';
 import WebPush from './webpush';
 import packageJSON from '../package.json';
+import mitt, { Emitter } from 'mitt';
 
 const DEFAULT_HOST = 'https://collector-staging.suprsend.workers.dev';
 const DEFAULT_SW_FILENAME = 'serviceworker.js';
@@ -31,6 +32,7 @@ export class SuprSend {
   );
   public user: User | null;
   public webpush: WebPush | null;
+  public emitter: Emitter<EmitterEvents>;
 
   init(workspaceKey: string, options?: SuprSendOptions) {
     if (!workspaceKey) {
@@ -46,6 +48,7 @@ export class SuprSend {
 
     this.user = new User(this);
     this.webpush = new WebPush(this);
+    this.emitter = mitt();
   }
 
   private setEnvProperties() {
@@ -111,6 +114,8 @@ export class SuprSend {
     this.localStorageService.set(SUPER_PROPERTIES_KEY, newData);
   }
 
+  // TODO: save authenticatedUser in client storage to avoid multiple identity api calls
+  // TODO: handle token expiry case
   async authenticate(
     distinctId: unknown,
     userToken?: string
@@ -176,7 +181,16 @@ export class SuprSend {
     });
   }
 
-  reset() {
+  async reset(options: { unsubscribePush: boolean }) {
+    const unsubscribePush = options?.unsubscribePush ?? true;
+
+    if (unsubscribePush) {
+      const subscription = await this.webpush?.getPushSubscription();
+      if (subscription) {
+        await this.user?.removeWebPush(subscription);
+      }
+    }
+
     this.apiClient = null;
     this.distinctId = null;
     this.userToken = '';

@@ -147,3 +147,34 @@ export function urlB64ToUint8Array(base64String: string) {
   }
   return outputArray;
 }
+
+export function debounce<T extends unknown[], U>(
+  callback: (...args: T) => PromiseLike<U> | U,
+  wait: number
+) {
+  let timer: ReturnType<typeof setTimeout>;
+
+  return (...args: T): Promise<U> => {
+    clearTimeout(timer);
+    return new Promise((resolve) => {
+      timer = setTimeout(() => resolve(callback(...args)), wait);
+    });
+  };
+}
+
+// https://gist.github.com/nzvtrk/1a444cdf6a86a5a6e6d6a34f0db19065
+export function debounceByType(func, wait) {
+  const memory = {};
+
+  return (...args) => {
+    const [searchType] = args;
+    const payload = args.slice(1);
+
+    if (typeof memory[searchType] === 'function') {
+      return memory[searchType](...payload);
+    }
+
+    memory[searchType] = debounce(func, wait);
+    return memory[searchType](...payload);
+  };
+}

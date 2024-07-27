@@ -1,6 +1,7 @@
 import { SuprSend } from './index';
 import { Dictionary } from './interface';
 import { epochMs, isArrayEmpty, isObjectEmpty, uuid } from './utils';
+import Preferences from './preferences';
 
 interface ValidatedDataOptions {
   allowReservedKeys?: boolean;
@@ -9,9 +10,11 @@ interface ValidatedDataOptions {
 
 export default class User {
   private config: SuprSend;
+  public preferences: Preferences;
 
   constructor(config: SuprSend) {
     this.config = config;
+    this.preferences = new Preferences(config);
   }
 
   private isReservedKey(key: string) {
