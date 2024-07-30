@@ -1,4 +1,10 @@
-import { SuprSendOptions, Dictionary, EmitterEvents } from './interface';
+import {
+  SuprSendOptions,
+  Dictionary,
+  EmitterEvents,
+  AuthenticateOptions,
+  RefreshTokenCallback,
+} from './interface';
 import ApiClient from './api';
 import {
   uuid,
@@ -12,11 +18,12 @@ import User from './user';
 import WebPush from './webpush';
 import packageJSON from '../package.json';
 import mitt, { Emitter } from 'mitt';
+import { jwtDecode } from 'jwt-decode';
 
 const DEFAULT_HOST = 'https://collector-staging.suprsend.workers.dev';
 const DEFAULT_SW_FILENAME = 'serviceworker.js';
-const SUPER_PROPERTIES_KEY = 'ss_super_properties';
 const DEVICE_ID_KEY = 'ss_device_id';
+const AUTHENTICATED_DISTINCT_ID = 'ss_distinct_id';
 
 export class SuprSend {
   public host: string;
@@ -33,10 +40,11 @@ export class SuprSend {
   public user: User | null;
   public webpush: WebPush | null;
   public emitter: Emitter<EmitterEvents>;
+  private userTokenExpirationTimer: ReturnType<typeof setTimeout> | null = null;
 
   init(workspaceKey: string, options?: SuprSendOptions) {
     if (!workspaceKey) {
-      throw new Error('SuprSend: workspaceKey is mandatory');
+      throw new Error('[SuprSend]: workspaceKey is mandatory');
     }
 
     this.workspaceKey = workspaceKey;
@@ -46,8 +54,6 @@ export class SuprSend {
 
     this.setEnvProperties();
 
-    this.user = new User(this);
-    this.webpush = new WebPush(this);
     this.emitter = mitt();
   }
 
@@ -83,8 +89,8 @@ export class SuprSend {
 
   client() {
     if (!this.distinctId) {
-      throw new Error(
-        'SuprSend: distinctId is missing. User should be authenticated'
+      console.warn(
+        '[SuprSend]: distinctId is missing. User should be authenticated'
       );
     }
 
@@ -100,53 +106,79 @@ export class SuprSend {
     return this.client().request({ path: 'v2/event', payload, type: 'post' });
   }
 
-  setSuperProperties(properties: Dictionary) {
-    if (!(properties instanceof Object)) return;
+  private handleRefreshUserToken(refreshUserToken: RefreshTokenCallback) {
+    if (!this.userToken) return;
 
-    const existingData = this.localStorageService.get(SUPER_PROPERTIES_KEY) as
-      | object
-      | null;
+    const jwtPayload = jwtDecode(this.userToken);
+    const expiresOn = (jwtPayload.exp ?? 0) * 1000; // in ms
+    const now = Date.now(); // in ms
+    const refreshBefore = 1000 * 30; // call refresh api before 1min of expiry
 
-    const newData = existingData
-      ? { ...existingData, ...properties }
-      : properties;
+    if (expiresOn && expiresOn > now) {
+      const timeDiff = expiresOn - now - refreshBefore;
 
-    this.localStorageService.set(SUPER_PROPERTIES_KEY, newData);
+      this.userTokenExpirationTimer = setTimeout(async () => {
+        const newToken = await refreshUserToken(this.userToken as string);
+
+        if (typeof newToken === 'string') {
+          this.identify(this.distinctId, newToken, {
+            refreshUserToken: refreshUserToken,
+          });
+        }
+      }, timeDiff);
+    }
   }
 
-  // TODO: save authenticatedUser in client storage to avoid multiple identity api calls
   // TODO: handle token expiry case
-  async authenticate(
+  async identify(
     distinctId: unknown,
-    userToken?: string
-    // options?: AuthenticateOptions
+    userToken?: string,
+    options?: AuthenticateOptions
   ) {
+    if (!distinctId) {
+      console.warn('[SuprSend]: distinctId is mandatory');
+    }
+
+    // other user already present
     if (this.apiClient && this.distinctId !== distinctId) {
-      // user already present
-      throw new Error(
-        'SuprSend: User already logged in reset this user and authenticate with new user'
+      console.warn(
+        '[SuprSend]: User already loggedin, reset current user to login new user'
       );
     }
 
+    // updating usertoken for existing user
     if (
       this.apiClient &&
       this.distinctId === distinctId &&
       this.userToken !== userToken
     ) {
-      // updating usertoken for existing user
       this.userToken = userToken;
       this.apiClient = this.createApiClient();
+      if (options?.refreshUserToken) {
+        this.handleRefreshUserToken(options.refreshUserToken);
+      }
       return;
     }
 
-    // only consider first method call ignore other calls
+    // only consider first method call, ignore the rest
     if (this.apiClient) return;
 
     this.distinctId = distinctId;
     this.userToken = userToken;
     this.apiClient = this.createApiClient();
+    this.user = new User(this);
+    this.webpush = new WebPush(this);
+    const authenticatedDistinctId = this.localStorageService.get(
+      AUTHENTICATED_DISTINCT_ID
+    );
 
-    return this.evenApi({
+    if (options?.refreshUserToken) {
+      this.handleRefreshUserToken(options.refreshUserToken);
+    }
+
+    if (authenticatedDistinctId == this.distinctId) return;
+
+    const resp = await this.evenApi({
       event: '$identify',
       $insert_id: uuid(),
       $time: epochMs(),
@@ -154,17 +186,26 @@ export class SuprSend {
         $identified_id: distinctId,
       },
     });
+
+    if (resp.status === 'success') {
+      // store user so that other method calls dont need api calls
+      this.localStorageService.set(AUTHENTICATED_DISTINCT_ID, this.distinctId);
+    } else {
+      // reset user data so that user can retry
+      this.reset({ unsubscribePush: false });
+    }
+    return resp;
+  }
+
+  isIdentified(checkUserToken: boolean) {
+    return checkUserToken
+      ? !!(this.userToken && this.distinctId)
+      : !!this.distinctId;
   }
 
   async track(event: string, properties?: Dictionary) {
     let propertiesObj: Dictionary = {};
-    const superProperties = this.localStorageService.get(
-      SUPER_PROPERTIES_KEY
-    ) as object | null;
 
-    if (superProperties) {
-      propertiesObj = { ...superProperties };
-    }
     if (this.envProperties) {
       propertiesObj = { ...propertiesObj, ...this.envProperties };
     }
@@ -194,10 +235,12 @@ export class SuprSend {
     this.apiClient = null;
     this.distinctId = null;
     this.userToken = '';
-    this.envProperties = {};
-    this.localStorageService.remove(SUPER_PROPERTIES_KEY);
     this.user = null;
     this.webpush = null;
+    this.localStorageService.remove(AUTHENTICATED_DISTINCT_ID);
+    if (this.userTokenExpirationTimer) {
+      clearTimeout(this.userTokenExpirationTimer);
+    }
   }
 }
 

@@ -29,7 +29,7 @@ export default class User {
     } else if (typeof arg1 === 'string' && arg2 !== undefined) {
       data = { [arg1]: arg2 };
     } else {
-      console.log('Invalid input parameters');
+      console.warn('[SuprSend]: Invalid input parameters');
     }
 
     return data;
@@ -52,7 +52,7 @@ export default class User {
       if (key && value === undefined) continue;
 
       if (!allowReservedKeys && this.isReservedKey(key)) {
-        console.log('SuprSend: key cannot start with $ or ss_');
+        console.warn('[SuprSend]: key cannot start with $ or ss_');
         continue;
       }
 
@@ -75,7 +75,7 @@ export default class User {
       if (item === undefined || item === null) continue;
 
       if (this.isReservedKey(item)) {
-        console.log('SuprSend: key cannot start with $ or ss_');
+        console.warn('[SuprSend]: key cannot start with $ or ss_');
         continue;
       }
 
@@ -198,7 +198,7 @@ export default class User {
     if (emailRegex.test(email)) {
       return email;
     } else {
-      console.log('SuprSend: email is invalid');
+      console.warn('[SuprSend]: email is invalid');
     }
   }
 
@@ -208,7 +208,9 @@ export default class User {
     if (mobileRegex.test(mobile)) {
       return mobile;
     } else {
-      console.log('SuprSend: mobile number is invalid');
+      console.warn(
+        '[SuprSend]: Provide valid mobile number as per E.164 standard'
+      );
     }
   }
 
@@ -256,7 +258,7 @@ export default class User {
 
   async addWebPush(push: PushSubscription) {
     if (typeof push !== 'object') {
-      console.log('SuprSend: push must be object');
+      console.warn('[SuprSend]: push must be object');
       return;
     }
 
@@ -271,7 +273,7 @@ export default class User {
 
   async removeWebPush(push: PushSubscription) {
     if (typeof push !== 'object') {
-      console.log('SuprSend: push must be object');
+      console.warn('[SuprSend]: push must be object');
       return;
     }
 
@@ -286,7 +288,7 @@ export default class User {
 
   async addSlack(data: Dictionary) {
     if (typeof data !== 'object') {
-      console.log('SuprSend: slack data must be object');
+      console.warn('[SuprSend]: slack data must be object');
       return;
     }
 
@@ -295,7 +297,7 @@ export default class User {
 
   async removeSlack(data: Dictionary) {
     if (typeof data !== 'object') {
-      console.log('SuprSend: slack data must be object');
+      console.warn('[SuprSend]: slack data must be object');
       return;
     }
 
@@ -304,7 +306,7 @@ export default class User {
 
   async addMSTeams(data: Dictionary) {
     if (typeof data !== 'object') {
-      console.log('SuprSend: ms_teams data must be object');
+      console.warn('[SuprSend]: ms_teams data must be object');
       return;
     }
 
@@ -313,7 +315,7 @@ export default class User {
 
   async removeMSTeams(data: Dictionary) {
     if (typeof data !== 'object') {
-      console.log('SuprSend: ms_teams data must be object');
+      console.warn('[SuprSend]: ms_teams data must be object');
       return;
     }
 
@@ -322,7 +324,7 @@ export default class User {
 
   async setPreferredLanguage(language: string) {
     if (typeof language !== 'string') {
-      console.log('SuprSend: language must be string');
+      console.warn('[SuprSend]: language must be string');
       return;
     }
 
@@ -331,7 +333,7 @@ export default class User {
 
   async setTimezone(timezone: string) {
     if (typeof timezone !== 'string') {
-      console.log('SuprSend: timezone must be string');
+      console.warn('[SuprSend]: timezone must be string');
       return;
     }
 

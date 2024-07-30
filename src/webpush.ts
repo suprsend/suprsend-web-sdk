@@ -25,7 +25,7 @@ export default class WebPush {
       // request notification permission
       const permission = await Notification.requestPermission();
       if (permission !== 'granted') {
-        console.log('SuprSend: Notification permission isnt granted');
+        console.warn('[SuprSend]: Notification permission isnt granted');
       }
 
       // wait until the service worker is ready
@@ -37,7 +37,7 @@ export default class WebPush {
       if (pushSubscriptionObj) return;
 
       if (!this.config.vapidKey) {
-        console.log('SuprSend: Provide vapid key while calling init');
+        console.warn('[SuprSend]: Provide vapid key while calling init');
         return;
       }
 
@@ -50,7 +50,7 @@ export default class WebPush {
       // send push token object to suprsend
       return this.config.user?.addWebPush(subscription);
     } catch (e) {
-      console.error('SuprSend: Error getting push subscription', e);
+      console.warn('SuprSend: Error getting push subscription', e);
     }
   }
 
@@ -61,7 +61,7 @@ export default class WebPush {
     if (pushSupported) {
       return this.handleRegisterPush();
     } else {
-      console.log("SuprSend: Web Push isn't supported");
+      console.warn("[SuprSend]: Webpush isn't supported");
     }
   }
 

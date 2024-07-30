@@ -50,7 +50,7 @@ export default class Preferences {
   }
 
   getUrlPath(path: string, qp?: Dictionary) {
-    const urlPath = `v1/subscriber/${this.config.distinctId}/${path}`;
+    const urlPath = `v2/subscriber/${this.config.distinctId}/${path}`;
 
     const validatedQueryParams = this.validateQueryParams(qp);
     const queryParamsString = new URLSearchParams(
