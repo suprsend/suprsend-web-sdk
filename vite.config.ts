@@ -11,6 +11,7 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: CJS ? 'dist/cjs' : 'dist/es',
       sourcemap: true,
+      copyPublicDir: false,
       lib: {
         entry: resolve(__dirname, 'src'),
         fileName: `[name]`,

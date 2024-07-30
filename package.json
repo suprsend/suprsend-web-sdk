@@ -1,7 +1,7 @@
 {
   "name": "@suprsend/web-sdk",
-  "private": true,
-  "version": "0.0.1",
+  "private": false,
+  "version": "2.0.0",
   "type": "module",
   "main": "./dist/cjs/index.cjs",
   "module": "./dist/es/index.js",
@@ -17,6 +17,7 @@
   },
   "files": [
     "dist",
+    "public",
     "README.md"
   ],
   "scripts": {

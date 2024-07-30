@@ -129,7 +129,6 @@ export class SuprSend {
     }
   }
 
-  // TODO: handle token expiry case
   async identify(
     distinctId: unknown,
     userToken?: string,
