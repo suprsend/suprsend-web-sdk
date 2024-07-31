@@ -19,7 +19,7 @@ import User from './user';
 import WebPush from './webpush';
 import packageJSON from '../package.json';
 import mitt, { Emitter } from 'mitt';
-import { jwtDecode } from 'jwt-decode';
+import jwt_decode from 'jwt-decode';
 
 const DEFAULT_HOST = 'https://collector-staging.suprsend.workers.dev';
 const DEFAULT_SW_FILENAME = 'serviceworker.js';
@@ -108,8 +108,8 @@ export class SuprSend {
   private handleRefreshUserToken(refreshUserToken: RefreshTokenCallback) {
     if (!this.userToken) return;
 
-    const jwtPayload = jwtDecode(this.userToken);
-    const expiresOn = (jwtPayload.exp ?? 0) * 1000; // in ms
+    const jwtPayload = jwt_decode(this.userToken) as Dictionary;
+    const expiresOn = ((jwtPayload.exp as number) ?? 0) * 1000; // in ms
     const now = Date.now(); // in ms
     const refreshBefore = 1000 * 30; // call refresh api before 1min of expiry
 
