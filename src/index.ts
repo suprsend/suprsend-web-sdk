@@ -159,7 +159,7 @@ export class SuprSend {
       return;
     }
 
-    // only consider first method call, ignore the rest
+    // ignore more than one identify call
     if (this.apiClient) return;
 
     this.distinctId = distinctId;
@@ -175,8 +175,13 @@ export class SuprSend {
       this.handleRefreshUserToken(options.refreshUserToken);
     }
 
-    if (authenticatedDistinctId == this.distinctId) return;
+    // already loggedin
+    if (authenticatedDistinctId == this.distinctId) {
+      this.webpush.updatePushSubscription();
+      return;
+    }
 
+    // first time login
     const resp = await this.evenApi({
       event: '$identify',
       $insert_id: uuid(),
@@ -189,6 +194,7 @@ export class SuprSend {
     if (resp.status === 'success') {
       // store user so that other method calls dont need api calls
       this.localStorageService.set(AUTHENTICATED_DISTINCT_ID, this.distinctId);
+      this.webpush.updatePushSubscription();
     } else {
       // reset user data so that user can retry
       this.reset({ unsubscribePush: false });
@@ -225,10 +231,7 @@ export class SuprSend {
     const unsubscribePush = options?.unsubscribePush ?? true;
 
     if (unsubscribePush) {
-      const subscription = await this.webpush?.getPushSubscription();
-      if (subscription) {
-        await this.user?.removeWebPush(subscription);
-      }
+      await this.webpush?.removePushSubscription();
     }
 
     this.apiClient = null;

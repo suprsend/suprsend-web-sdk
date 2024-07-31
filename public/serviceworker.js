@@ -19,7 +19,7 @@ var validNotificationParams = [
 var notificationUrlFields = ['image', 'icon', 'badge'];
 
 var suprsendConfig = {
-  apiUrl: 'https://hub.suprsend.com',
+  host: 'https://hub.suprsend.com',
   imgkitUrl: 'https://ik.imagekit.io/l0quatz6utm/',
   workspaceKey: '',
 };
@@ -59,7 +59,7 @@ function validateNotification(notificationObj) {
 
 function callSSApi(body, method = 'post') {
   var authorization = suprsendConfig.workspaceKey;
-  const finalUrl = `${suprsendConfig.apiUrl}/v2/event`;
+  const finalUrl = `${suprsendConfig.host}/v2/event`;
 
   return fetch(finalUrl, {
     method: method,
@@ -71,10 +71,11 @@ function callSSApi(body, method = 'post') {
   });
 }
 
-function initSuprSend(key, url) {
+function initSuprSend(key, options) {
   suprsendConfig.workspaceKey = key;
-  if (url) {
-    suprsendConfig.apiUrl = url;
+
+  if (options.host) {
+    suprsendConfig.host = options.host;
   }
 }
 
@@ -84,7 +85,6 @@ self.addEventListener('push', function (e) {
 
   callSSApi({
     event: '$notification_delivered',
-    env: suprsendConfig.workspaceKey,
     $time: Math.round(Date.now()),
     properties: {
       id: safeGet(() => validated_notification.data.notification_id),
@@ -108,7 +108,6 @@ self.addEventListener('notificationclick', function (e) {
 
   callSSApi({
     event: '$notification_clicked',
-    env: suprsendConfig.workspaceKey,
     $time: Math.round(Date.now()),
     properties: {
       id: safeGet(() => notification.data.notification_id),
@@ -134,7 +133,6 @@ self.addEventListener('notificationclose', function (e) {
 
   callSSApi({
     event: '$notification_dismiss',
-    env: suprsendConfig.workspaceKey,
     $time: Math.round(Date.now()),
     properties: {
       id: safeGet(() => notification.data.notification_id),

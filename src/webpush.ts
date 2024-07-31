@@ -8,7 +8,7 @@ export default class WebPush {
     this.config = config;
   }
 
-  async getPushSubscription() {
+  private async getPushSubscription() {
     const registration = await navigator.serviceWorker.getRegistration();
     if (!registration) return;
 
@@ -62,6 +62,20 @@ export default class WebPush {
       return this.handleRegisterPush();
     } else {
       console.warn("[SuprSend]: Webpush isn't supported");
+    }
+  }
+
+  async updatePushSubscription() {
+    const subscription = await this.getPushSubscription();
+    if (subscription) {
+      return this.config.user?.addWebPush(subscription);
+    }
+  }
+
+  async removePushSubscription() {
+    const subscription = await this.getPushSubscription();
+    if (subscription) {
+      return this.config.user?.removeWebPush(subscription);
     }
   }
 
