@@ -1,26 +1,17 @@
-import { Dictionary, ApiResponse } from './interface';
-
-interface ApiClientOption {
-  host: string;
-  workspaceKey: string;
-  userToken: string;
-}
-
-interface HandleRequest {
-  type: 'get' | 'post';
-  path: string;
-  payload?: Dictionary;
-}
+import { Dictionary, ApiClientOption, HandleRequest } from './interface';
+import { getResponsePayload } from './utils';
 
 export default class ApiClient {
   private workspaceKey: string;
   private userToken: string;
   private host: string;
+  private distinctId: unknown;
 
   constructor(options: ApiClientOption) {
     this.host = options.host;
     this.workspaceKey = options.workspaceKey;
     this.userToken = options.userToken;
+    this.distinctId = options.distinctId;
   }
 
   private getUrl(path: string) {
@@ -70,24 +61,38 @@ export default class ApiClient {
     });
   }
 
-  async request(reqData: HandleRequest): Promise<ApiResponse> {
+  async request(reqData: HandleRequest) {
+    if (!this.distinctId) {
+      return getResponsePayload({
+        status: 'error',
+        errorType: 'VALIDATION_ERROR',
+        errorMessage: 'user is not authenticated',
+      });
+    }
+
     try {
       const resp = await this.requestApiInstance(reqData);
       const respData = await resp.json();
 
-      return {
-        status: respData?.status || (resp.ok ? 'success' : 'error'),
+      const respStatus = respData?.status || (resp.ok ? 'success' : 'error');
+
+      return getResponsePayload({
+        status: respStatus,
         body: respData,
         statusCode: resp.status,
-      };
-    } catch (e: unknown) {
+        errorMessage: respData?.error?.message,
+        errorType: respData?.error?.type,
+      });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (e: any) {
       console.error(e);
 
-      return {
+      return getResponsePayload({
         status: 'error',
         statusCode: 500,
-        error: e,
-      };
+        errorMessage: e?.message || 'network error',
+        errorType: 'NETWORK_ERROR',
+      });
     }
   }
 }

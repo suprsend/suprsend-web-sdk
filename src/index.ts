@@ -13,6 +13,7 @@ import {
   browserVersion,
   os,
   StorageService,
+  getResponsePayload,
 } from './utils';
 import User from './user';
 import WebPush from './webpush';
@@ -37,9 +38,9 @@ export class SuprSend {
   private localStorageService = new StorageService<Dictionary>(
     window.localStorage
   );
-  public user: User | null;
-  public webpush: WebPush | null;
-  public emitter: Emitter<EmitterEvents>;
+  readonly user = new User(this);
+  readonly webpush = new WebPush(this);
+  readonly emitter: Emitter<EmitterEvents> = mitt();
   private userTokenExpirationTimer: ReturnType<typeof setTimeout> | null = null;
 
   init(workspaceKey: string, options?: SuprSendOptions) {
@@ -53,8 +54,6 @@ export class SuprSend {
     this.swFileName = options?.swFileName || DEFAULT_SW_FILENAME;
 
     this.setEnvProperties();
-
-    this.emitter = mitt();
   }
 
   private setEnvProperties() {
@@ -80,6 +79,7 @@ export class SuprSend {
       workspaceKey: this.workspaceKey,
       host: this.host,
       userToken: this.userToken || '',
+      distinctId: this.distinctId,
     });
   }
 
@@ -95,8 +95,7 @@ export class SuprSend {
     }
 
     if (!this.apiClient) {
-      // create new client
-      this.apiClient = this.createApiClient();
+      this.apiClient = this.createApiClient(); // create new client
     }
 
     return this.apiClient;
@@ -135,14 +134,21 @@ export class SuprSend {
     options?: AuthenticateOptions
   ) {
     if (!distinctId) {
-      console.warn('[SuprSend]: distinctId is mandatory');
+      return getResponsePayload({
+        status: 'error',
+        errorType: 'VALIDATION_ERROR',
+        errorMessage: 'distinctId is mandatory',
+      });
     }
 
     // other user already present
     if (this.apiClient && this.distinctId !== distinctId) {
-      console.warn(
-        '[SuprSend]: User already loggedin, reset current user to login new user'
-      );
+      return getResponsePayload({
+        status: 'error',
+        errorType: 'VALIDATION_ERROR',
+        errorMessage:
+          'User already loggedin, reset current user to login new user',
+      });
     }
 
     // updating usertoken for existing user
@@ -156,7 +162,7 @@ export class SuprSend {
       if (options?.refreshUserToken) {
         this.handleRefreshUserToken(options.refreshUserToken);
       }
-      return;
+      return getResponsePayload({ status: 'success' });
     }
 
     // ignore more than one identify call
@@ -165,8 +171,7 @@ export class SuprSend {
     this.distinctId = distinctId;
     this.userToken = userToken;
     this.apiClient = this.createApiClient();
-    this.user = new User(this);
-    this.webpush = new WebPush(this);
+
     const authenticatedDistinctId = this.localStorageService.get(
       AUTHENTICATED_DISTINCT_ID
     );
@@ -178,7 +183,7 @@ export class SuprSend {
     // already loggedin
     if (authenticatedDistinctId == this.distinctId) {
       this.webpush.updatePushSubscription();
-      return;
+      return getResponsePayload({ status: 'success' });
     }
 
     // first time login
@@ -237,12 +242,12 @@ export class SuprSend {
     this.apiClient = null;
     this.distinctId = null;
     this.userToken = '';
-    this.user = null;
-    this.webpush = null;
+
     this.localStorageService.remove(AUTHENTICATED_DISTINCT_ID);
     if (this.userTokenExpirationTimer) {
       clearTimeout(this.userTokenExpirationTimer);
     }
+    return getResponsePayload({ status: 'success' });
   }
 }
 

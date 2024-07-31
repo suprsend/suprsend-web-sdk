@@ -12,13 +12,26 @@ export interface AuthenticateOptions {
   refreshUserToken: RefreshTokenCallback;
 }
 
-export interface ApiResponse {
-  statusCode: number;
-  status: 'success' | 'error';
+export interface ResponseOptions {
+  status: 'error' | 'success';
+  statusCode?: number;
   // eslint-disable-next-line
   body?: any;
+  errorMessage?: string;
+  errorType?: string;
+}
+
+interface IError {
+  type?: string;
+  message?: string;
+}
+
+export interface ApiResponse {
+  status: 'success' | 'error';
+  statusCode?: number;
+  error?: IError;
   // eslint-disable-next-line
-  error?: any;
+  body?: any;
 }
 
 export enum PreferenceOptions {
@@ -71,3 +84,16 @@ export type EmitterEvents = {
   preferences_updated: PreferenceApiResponse;
   preferences_error: ApiResponse;
 };
+
+export interface ApiClientOption {
+  host: string;
+  workspaceKey: string;
+  userToken: string;
+  distinctId: unknown;
+}
+
+export interface HandleRequest {
+  type: 'get' | 'post';
+  path: string;
+  payload?: Dictionary;
+}

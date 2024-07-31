@@ -1,4 +1,4 @@
-import { Dictionary } from './interface';
+import { ApiResponse, Dictionary, ResponseOptions } from './interface';
 
 export function uuid() {
   let dt = new Date().getTime();
@@ -177,4 +177,24 @@ export function debounceByType(func, wait) {
     memory[searchType] = debounce(func, wait);
     return memory[searchType](...payload);
   };
+}
+
+export function getResponsePayload(options: ResponseOptions) {
+  const response: ApiResponse = { status: options.status };
+
+  if (options.statusCode) {
+    response.statusCode = options.statusCode;
+  }
+
+  if (options.body) {
+    response.body = options.body;
+  }
+
+  if (options.status === 'error') {
+    response.error = {
+      type: options.errorType,
+      message: options.errorMessage,
+    };
+  }
+  return response;
 }

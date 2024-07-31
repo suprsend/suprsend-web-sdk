@@ -8,7 +8,7 @@ import {
   ChannelLevelPreferenceOptions,
   ChannelPreference,
 } from './interface';
-import { debounceByType } from './utils';
+import { debounceByType, getResponsePayload } from './utils';
 
 export default class Preferences {
   private config: SuprSend;
@@ -93,13 +93,11 @@ export default class Preferences {
 
   async getCategory(category: string, args?: { tenantId?: string }) {
     if (!category) {
-      return {
+      return getResponsePayload({
         status: 'error',
-        error: {
-          type: 'VALIDATION_ERROR',
-          message: 'Category parameter is missing',
-        },
-      };
+        errorType: 'VALIDATION_ERROR',
+        errorMessage: 'Category parameter is missing',
+      });
     }
 
     const queryParams = { tenant_id: args?.tenantId };
@@ -172,35 +170,29 @@ export default class Preferences {
         preference
       )
     ) {
-      return {
+      return getResponsePayload({
         status: 'error',
-        error: {
-          type: 'VALIDATION_ERROR',
-          message: !category
-            ? 'Category parameter is missing'
-            : 'Preference parameter is invalid',
-        },
-      };
+        errorType: 'VALIDATION_ERROR',
+        errorMessage: !category
+          ? 'Category parameter is missing'
+          : 'Preference parameter is invalid',
+      });
     }
 
     if (!this.data) {
-      return {
+      return getResponsePayload({
         status: 'error',
-        error: {
-          type: 'VALIDATION_ERROR',
-          message: 'Call getPreferences method before performing action',
-        },
-      };
+        errorType: 'VALIDATION_ERROR',
+        errorMessage: 'Call getPreferences method before performing action',
+      });
     }
 
     if (!this.data.sections) {
-      return {
+      return getResponsePayload({
         status: 'error',
-        error: {
-          type: 'VALIDATION_ERROR',
-          message: "Sections doesn't exist",
-        },
-      };
+        errorType: 'VALIDATION_ERROR',
+        errorMessage: "Sections doesn't exist",
+      });
     }
 
     let categoryData: Category | null = null;
@@ -224,13 +216,11 @@ export default class Preferences {
               // console.log(`category is already ${status}ed`);
             }
           } else {
-            return {
+            return getResponsePayload({
               status: 'error',
-              error: {
-                type: 'VALIDATION_ERROR',
-                message: 'Category preference is not editable',
-              },
-            };
+              errorType: 'VALIDATION_ERROR',
+              errorMessage: 'Category preference is not editable',
+            });
           }
         }
       }
@@ -238,17 +228,15 @@ export default class Preferences {
     }
 
     if (!categoryData) {
-      return {
+      return getResponsePayload({
         status: 'error',
-        error: {
-          type: 'VALIDATION_ERROR',
-          message: 'Category not found',
-        },
-      };
+        errorType: 'VALIDATION_ERROR',
+        errorMessage: 'Category not found',
+      });
     }
 
     if (!dataUpdated) {
-      return this.data;
+      return getResponsePayload({ status: 'success', body: this.data });
     }
 
     const optOutChannels: string[] = [];
@@ -271,25 +259,23 @@ export default class Preferences {
       { tenant_id: args?.tenantId }
     );
 
-    return this.data;
+    return getResponsePayload({ status: 'success', body: this.data });
   }
 
-  updateChannelPreferenceInCategory(
+  async updateChannelPreferenceInCategory(
     channel: string,
     preference: PreferenceOptions,
     category: string,
     args?: { tenantId?: string }
   ) {
     if (!channel || !category) {
-      return {
+      return getResponsePayload({
         status: 'error',
-        error: {
-          type: 'VALIDATION_ERROR',
-          message: !channel
-            ? 'Channel parameter is missing'
-            : 'Category parameter is missing',
-        },
-      };
+        errorType: 'VALIDATION_ERROR',
+        errorMessage: !channel
+          ? 'Channel parameter is missing'
+          : 'Category parameter is missing',
+      });
     }
 
     if (
@@ -297,33 +283,27 @@ export default class Preferences {
         preference
       )
     ) {
-      return {
+      return getResponsePayload({
         status: 'error',
-        error: {
-          type: 'VALIDATION_ERROR',
-          message: 'Preference parameter is invalid',
-        },
-      };
+        errorType: 'VALIDATION_ERROR',
+        errorMessage: 'Preference parameter is invalid',
+      });
     }
 
     if (!this.data) {
-      return {
+      return getResponsePayload({
         status: 'error',
-        error: {
-          type: 'VALIDATION_ERROR',
-          message: 'Call getPreferences method before performing action',
-        },
-      };
+        errorType: 'VALIDATION_ERROR',
+        errorMessage: 'Call getPreferences method before performing action',
+      });
     }
 
     if (!this.data.sections) {
-      return {
+      return getResponsePayload({
         status: 'error',
-        error: {
-          type: 'VALIDATION_ERROR',
-          message: "Sections doesn't exist",
-        },
-      };
+        errorType: 'VALIDATION_ERROR',
+        errorMessage: "Sections doesn't exist",
+      });
     }
 
     let categoryData: Category | null = null;
@@ -356,10 +336,11 @@ export default class Preferences {
                   //  console.log(`channel is already ${preference}`);
                 }
               } else {
-                return {
-                  error: true,
-                  message: 'Channel preference is not editable',
-                };
+                return getResponsePayload({
+                  status: 'error',
+                  errorType: 'VALIDATION_ERROR',
+                  errorMessage: 'Channel preference is not editable',
+                });
               }
             }
           }
@@ -370,27 +351,23 @@ export default class Preferences {
     }
 
     if (!categoryData) {
-      return {
+      return getResponsePayload({
         status: 'error',
-        error: {
-          type: 'VALIDATION_ERROR',
-          message: 'Category not found',
-        },
-      };
+        errorType: 'VALIDATION_ERROR',
+        errorMessage: 'Category not found',
+      });
     }
 
     if (!selectedChannelData) {
-      return {
+      return getResponsePayload({
         status: 'error',
-        error: {
-          type: 'VALIDATION_ERROR',
-          message: "Category's channel not found",
-        },
-      };
+        errorType: 'VALIDATION_ERROR',
+        errorMessage: "Category's channel not found",
+      });
     }
 
     if (!dataUpdated) {
-      return this.data;
+      return getResponsePayload({ status: 'success', body: this.data });
     }
 
     const optOutChannels: string[] = [];
@@ -413,10 +390,10 @@ export default class Preferences {
       { tenant_id: args?.tenantId }
     );
 
-    return this.data;
+    return getResponsePayload({ status: 'success', body: this.data });
   }
 
-  updateOverallChannelPreference(
+  async updateOverallChannelPreference(
     channel: string,
     preference: ChannelLevelPreferenceOptions
   ) {
@@ -427,35 +404,29 @@ export default class Preferences {
         ChannelLevelPreferenceOptions.REQUIRED,
       ].includes(preference)
     ) {
-      return {
+      return getResponsePayload({
         status: 'error',
-        error: {
-          type: 'VALIDATION_ERROR',
-          message: !channel
-            ? 'Channel parameter is missing'
-            : 'Preference parameter is invalid',
-        },
-      };
+        errorType: 'VALIDATION_ERROR',
+        errorMessage: !channel
+          ? 'Channel parameter is missing'
+          : 'Preference parameter is invalid',
+      });
     }
 
     if (!this.data) {
-      return {
+      return getResponsePayload({
         status: 'error',
-        error: {
-          type: 'VALIDATION_ERROR',
-          message: 'Call getPreferences method before performing action',
-        },
-      };
+        errorType: 'VALIDATION_ERROR',
+        errorMessage: 'Call getPreferences method before performing action',
+      });
     }
 
     if (!this.data.channel_preferences) {
-      return {
+      return getResponsePayload({
         status: 'error',
-        error: {
-          type: 'VALIDATION_ERROR',
-          message: "Channel preferences doesn't exist",
-        },
-      };
+        errorType: 'VALIDATION_ERROR',
+        errorMessage: "Channel preferences doesn't exist",
+      });
     }
 
     let channelData: ChannelPreference | null = null;
@@ -475,23 +446,21 @@ export default class Preferences {
     }
 
     if (!channelData) {
-      return {
+      return getResponsePayload({
         status: 'error',
-        error: {
-          type: 'VALIDATION_ERROR',
-          message: 'Channel data not found',
-        },
-      };
+        errorType: 'VALIDATION_ERROR',
+        errorMessage: 'Channel data not found',
+      });
     }
 
     if (!dataUpdated) {
-      return this.data;
+      return getResponsePayload({ status: 'success', body: this.data });
     }
 
     this.debouncedUpdateChannelPreferences(channelData.channel, {
       channel_preferences: [channelData],
     });
 
-    return this.data;
+    return getResponsePayload({ status: 'success', body: this.data });
   }
 }
