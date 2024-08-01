@@ -22,11 +22,11 @@ export default class Preferences {
     this.config = config;
 
     this.debouncedUpdateCategoryPreferences = debounceByType(
-      this._updateCategoryPreferences,
+      this._updateCategoryPreferences.bind(this),
       this.debounceTime
     );
     this.debouncedUpdateChannelPreferences = debounceByType(
-      this._updateChannelPreferences,
+      this._updateChannelPreferences.bind(this),
       this.debounceTime
     );
   }
@@ -248,7 +248,7 @@ export default class Preferences {
 
     const requestPayload = {
       preference: categoryData.preference,
-      optOutChannels,
+      opt_out_channels: optOutChannels,
     };
 
     this.debouncedUpdateCategoryPreferences(
@@ -379,7 +379,7 @@ export default class Preferences {
 
     const requestPayload = {
       preference: categoryData.preference,
-      optOutChannels,
+      opt_out_channels: optOutChannels,
     };
 
     this.debouncedUpdateCategoryPreferences(

@@ -4,6 +4,8 @@ import {
   EmitterEvents,
   AuthenticateOptions,
   RefreshTokenCallback,
+  PreferenceOptions,
+  ChannelLevelPreferenceOptions,
 } from './interface';
 import ApiClient from './api';
 import {
@@ -109,7 +111,7 @@ export class SuprSend {
     if (!this.userToken) return;
 
     const jwtPayload = jwt_decode(this.userToken) as Dictionary;
-    const expiresOn = ((jwtPayload.exp as number) ?? 0) * 1000; // in ms
+    const expiresOn = ((jwtPayload.exp as number) || 0) * 1000; // in ms
     const now = Date.now(); // in ms
     const refreshBefore = 1000 * 30; // call refresh api before 1min of expiry
 
@@ -234,8 +236,8 @@ export class SuprSend {
     });
   }
 
-  async reset(options: { unsubscribePush: boolean }) {
-    const unsubscribePush = options?.unsubscribePush ?? true;
+  async reset(options?: { unsubscribePush?: boolean }) {
+    const unsubscribePush = !(options?.unsubscribePush === false); // defaults to true
 
     if (unsubscribePush) {
       await this.webpush?.removePushSubscription();
@@ -256,3 +258,4 @@ export class SuprSend {
 const suprsendInstance = new SuprSend();
 
 export default suprsendInstance;
+export { ChannelLevelPreferenceOptions, PreferenceOptions };
