@@ -87,7 +87,7 @@ export type EmitterEvents = {
 
 export interface ApiClientOption {
   host: string;
-  workspaceKey: string;
+  publicApiKey: string;
   userToken: string;
   distinctId: unknown;
 }

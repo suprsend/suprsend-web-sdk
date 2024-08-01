@@ -28,7 +28,7 @@ const AUTHENTICATED_DISTINCT_ID = 'ss_distinct_id';
 
 export class SuprSend {
   public host: string;
-  private workspaceKey: string;
+  private publicApiKey: string;
   public distinctId: unknown;
   private userToken?: string;
   private envProperties?: Dictionary;
@@ -43,12 +43,12 @@ export class SuprSend {
   readonly emitter: Emitter<EmitterEvents> = mitt();
   private userTokenExpirationTimer: ReturnType<typeof setTimeout> | null = null;
 
-  init(workspaceKey: string, options?: SuprSendOptions) {
-    if (!workspaceKey) {
-      throw new Error('[SuprSend]: workspaceKey is mandatory');
+  init(publicApiKey: string, options?: SuprSendOptions) {
+    if (!publicApiKey) {
+      throw new Error('[SuprSend]: publicApiKey is mandatory');
     }
 
-    this.workspaceKey = workspaceKey;
+    this.publicApiKey = publicApiKey;
     this.host = options?.host || DEFAULT_HOST;
     this.vapidKey = options?.vapidKey || '';
     this.swFileName = options?.swFileName || DEFAULT_SW_FILENAME;
@@ -76,7 +76,7 @@ export class SuprSend {
 
   private createApiClient() {
     return new ApiClient({
-      workspaceKey: this.workspaceKey,
+      publicApiKey: this.publicApiKey,
       host: this.host,
       userToken: this.userToken || '',
       distinctId: this.distinctId,
@@ -166,7 +166,9 @@ export class SuprSend {
     }
 
     // ignore more than one identify call
-    if (this.apiClient) return;
+    if (this.apiClient) {
+      return getResponsePayload({ status: 'success' });
+    }
 
     this.distinctId = distinctId;
     this.userToken = userToken;

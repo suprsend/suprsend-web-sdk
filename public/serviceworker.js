@@ -21,7 +21,7 @@ var notificationUrlFields = ['image', 'icon', 'badge'];
 var suprsendConfig = {
   host: 'https://hub.suprsend.com',
   imgkitUrl: 'https://ik.imagekit.io/l0quatz6utm/',
-  workspaceKey: '',
+  publicApiKey: '',
 };
 
 function safeGet(cb, defaultvalue) {
@@ -58,7 +58,7 @@ function validateNotification(notificationObj) {
 }
 
 function callSSApi(body, method = 'post') {
-  var authorization = suprsendConfig.workspaceKey;
+  var authorization = suprsendConfig.publicApiKey;
   const finalUrl = `${suprsendConfig.host}/v2/event`;
 
   return fetch(finalUrl, {
@@ -72,7 +72,7 @@ function callSSApi(body, method = 'post') {
 }
 
 function initSuprSend(key, options) {
-  suprsendConfig.workspaceKey = key;
+  suprsendConfig.publicApiKey = key;
 
   if (options.host) {
     suprsendConfig.host = options.host;

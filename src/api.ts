@@ -2,14 +2,14 @@ import { Dictionary, ApiClientOption, HandleRequest } from './interface';
 import { getResponsePayload } from './utils';
 
 export default class ApiClient {
-  private workspaceKey: string;
+  private publicApiKey: string;
   private userToken: string;
   private host: string;
   private distinctId: unknown;
 
   constructor(options: ApiClientOption) {
     this.host = options.host;
-    this.workspaceKey = options.workspaceKey;
+    this.publicApiKey = options.publicApiKey;
     this.userToken = options.userToken;
     this.distinctId = options.distinctId;
   }
@@ -21,7 +21,7 @@ export default class ApiClient {
   private getHeaders() {
     const headers = {
       'Content-Type': 'application/json',
-      Authorization: this.workspaceKey,
+      Authorization: this.publicApiKey,
     };
 
     if (this.userToken) {
