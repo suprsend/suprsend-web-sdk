@@ -1,12 +1,18 @@
 import { SuprSend } from './index';
-import { Dictionary } from './interface';
-import { epochMs, isArrayEmpty, isObjectEmpty, uuid } from './utils';
+import {
+  Dictionary,
+  ERROR_TYPE,
+  RESPONSE_STATUS,
+  ValidatedDataOptions,
+} from './interface';
+import {
+  epochMs,
+  getResponsePayload,
+  isArrayEmpty,
+  isObjectEmpty,
+  uuid,
+} from './utils';
 import Preferences from './preferences';
-
-interface ValidatedDataOptions {
-  allowReservedKeys?: boolean;
-  valueType?: string;
-}
 
 export default class User {
   private config: SuprSend;
@@ -96,60 +102,132 @@ export default class User {
 
   set(arg1: string | Dictionary, arg2?: unknown) {
     const data = this.formatParamsToObj(arg1, arg2);
-    if (!data) return;
+    if (!data) {
+      return getResponsePayload({
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
+        errorMessage: 'data provided is empty',
+      });
+    }
 
     const validatedData = this.validateObjData(data);
-    if (isObjectEmpty(validatedData)) return;
+    if (isObjectEmpty(validatedData)) {
+      return getResponsePayload({
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
+        errorMessage: 'data provided is empty',
+      });
+    }
 
     return this.triggerUserEvent({ $set: validatedData });
   }
 
   setOnce(arg1: string | Dictionary, arg2?: unknown) {
     const data = this.formatParamsToObj(arg1, arg2);
-    if (!data) return;
+    if (!data) {
+      return getResponsePayload({
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
+        errorMessage: 'data provided is empty',
+      });
+    }
 
     const validatedData = this.validateObjData(data);
-    if (isObjectEmpty(validatedData)) return;
+    if (isObjectEmpty(validatedData)) {
+      return getResponsePayload({
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
+        errorMessage: 'data provided is empty',
+      });
+    }
 
     return this.triggerUserEvent({ $set_once: validatedData });
   }
 
   increment(arg1: string | Dictionary, arg2?: number) {
     const data = this.formatParamsToObj(arg1, arg2);
-    if (!data) return;
+    if (!data) {
+      return getResponsePayload({
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
+        errorMessage: 'data provided is empty',
+      });
+    }
 
     const validatedData = this.validateObjData(data, { valueType: 'number' });
-    if (isObjectEmpty(validatedData)) return;
+    if (isObjectEmpty(validatedData)) {
+      return getResponsePayload({
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
+        errorMessage: 'data provided is empty',
+      });
+    }
 
     return this.triggerUserEvent({ $add: validatedData });
   }
 
   append(arg1: string | Dictionary, arg2?: unknown) {
     const data = this.formatParamsToObj(arg1, arg2);
-    if (!data) return;
+    if (!data) {
+      return getResponsePayload({
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
+        errorMessage: 'data provided is empty',
+      });
+    }
 
     const validatedData = this.validateObjData(data);
-    if (isObjectEmpty(validatedData)) return;
+    if (isObjectEmpty(validatedData)) {
+      return getResponsePayload({
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
+        errorMessage: 'data provided is empty',
+      });
+    }
 
     return this.triggerUserEvent({ $append: validatedData });
   }
 
   remove(arg1: string | Dictionary, arg2?: unknown) {
     const data = this.formatParamsToObj(arg1, arg2);
-    if (!data) return;
+    if (!data) {
+      return getResponsePayload({
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
+        errorMessage: 'data provided is empty',
+      });
+    }
 
     const validatedData = this.validateObjData(data);
-    if (isObjectEmpty(validatedData)) return;
+    if (isObjectEmpty(validatedData)) {
+      return getResponsePayload({
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
+        errorMessage: 'data provided is empty',
+      });
+    }
 
     return this.triggerUserEvent({ $remove: validatedData });
   }
 
   unset(arg: string | string[]) {
     const data = this.formatParamsToArray(arg);
-    if (!data) return;
+    if (!data) {
+      return getResponsePayload({
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
+        errorMessage: 'data provided is empty',
+      });
+    }
 
     const validatedData = this.validateArrayData(data);
-    if (isArrayEmpty(validatedData)) return;
+    if (isArrayEmpty(validatedData)) {
+      return getResponsePayload({
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
+        errorMessage: 'data provided is empty',
+      });
+    }
 
     return this.triggerUserEvent({ $unset: validatedData });
   }
@@ -157,12 +235,24 @@ export default class User {
   // this append is only used internally since it allows internal events
   private appendInternal(arg1: string | Dictionary, arg2?: unknown) {
     const data = this.formatParamsToObj(arg1, arg2);
-    if (!data) return;
+    if (!data) {
+      return getResponsePayload({
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
+        errorMessage: 'data provided is empty',
+      });
+    }
 
     const validatedData = this.validateObjData(data, {
       allowReservedKeys: true,
     });
-    if (isObjectEmpty(validatedData)) return;
+    if (isObjectEmpty(validatedData)) {
+      return getResponsePayload({
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
+        errorMessage: 'data provided is empty',
+      });
+    }
 
     return this.triggerUserEvent({ $append: validatedData });
   }
@@ -170,24 +260,48 @@ export default class User {
   // this remove is only used internally since it allows internal events
   private removeInternal(arg1: string | Dictionary, arg2?: unknown) {
     const data = this.formatParamsToObj(arg1, arg2);
-    if (!data) return;
+    if (!data) {
+      return getResponsePayload({
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
+        errorMessage: 'data provided is empty',
+      });
+    }
 
     const validatedData = this.validateObjData(data, {
       allowReservedKeys: true,
     });
-    if (isObjectEmpty(validatedData)) return;
+    if (isObjectEmpty(validatedData)) {
+      return getResponsePayload({
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
+        errorMessage: 'data provided is empty',
+      });
+    }
 
     return this.triggerUserEvent({ $remove: validatedData });
   }
 
   private setInternal(arg1: string | Dictionary, arg2?: unknown) {
     const data = this.formatParamsToObj(arg1, arg2);
-    if (!data) return;
+    if (!data) {
+      return getResponsePayload({
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
+        errorMessage: 'data provided is empty',
+      });
+    }
 
     const validatedData = this.validateObjData(data, {
       allowReservedKeys: true,
     });
-    if (isObjectEmpty(validatedData)) return;
+    if (isObjectEmpty(validatedData)) {
+      return getResponsePayload({
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
+        errorMessage: 'data provided is empty',
+      });
+    }
 
     return this.triggerUserEvent({ $set: validatedData });
   }
@@ -195,71 +309,111 @@ export default class User {
   private validateEmail(email: string) {
     const emailRegex = /\S+@\S+\.\S+/;
 
-    if (emailRegex.test(email)) {
-      return email;
-    } else {
-      console.warn('[SuprSend]: email is invalid');
-    }
+    return emailRegex.test(email);
   }
 
   private validateMobile(mobile: string) {
     const mobileRegex = /^\+[1-9]\d{1,14}$/;
 
-    if (mobileRegex.test(mobile)) {
-      return mobile;
-    } else {
-      console.warn(
-        '[SuprSend]: Provide valid mobile number as per E.164 standard'
-      );
-    }
+    return mobileRegex.test(mobile);
   }
 
   async addEmail(email: string) {
-    const validatedEmail = this.validateEmail(email);
-    if (!validatedEmail) return;
+    const isValid = this.validateEmail(email);
 
-    return this.appendInternal({ $email: validatedEmail });
+    if (!isValid) {
+      return getResponsePayload({
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
+        errorMessage: 'provided email is invalid',
+      });
+    }
+
+    return this.appendInternal({ $email: email });
   }
 
   async removeEmail(email: string) {
-    const validatedEmail = this.validateEmail(email);
-    if (!validatedEmail) return;
+    const isValid = this.validateEmail(email);
 
-    return this.removeInternal({ $email: validatedEmail });
+    if (!isValid) {
+      return getResponsePayload({
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
+        errorMessage: 'provided email is invalid',
+      });
+    }
+
+    return this.removeInternal({ $email: email });
   }
 
   async addSms(mobile: string) {
-    const validatedMobile = this.validateMobile(mobile);
-    if (!validatedMobile) return;
+    const isValid = this.validateMobile(mobile);
 
-    return this.appendInternal({ $sms: validatedMobile });
+    if (!isValid) {
+      return getResponsePayload({
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
+        errorMessage:
+          'provided mobile number is invalid, must be as per E.164 standard',
+      });
+    }
+
+    return this.appendInternal({ $sms: mobile });
   }
 
   async removeSms(mobile: string) {
-    const validatedMobile = this.validateMobile(mobile);
-    if (!validatedMobile) return;
+    const isValid = this.validateMobile(mobile);
 
-    return this.removeInternal({ $sms: validatedMobile });
+    if (!isValid) {
+      return getResponsePayload({
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
+        errorMessage:
+          'provided mobile number is invalid, must be as per E.164 standard',
+      });
+    }
+
+    return this.removeInternal({ $sms: mobile });
   }
 
   async addWhatsapp(mobile: string) {
-    const validatedMobile = this.validateMobile(mobile);
-    if (!validatedMobile) return;
+    const isValid = this.validateMobile(mobile);
 
-    return this.appendInternal({ $whatsapp: validatedMobile });
+    if (!isValid) {
+      return getResponsePayload({
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
+        errorMessage:
+          'provided mobile number is invalid, must be as per E.164 standard',
+      });
+    }
+
+    return this.appendInternal({ $whatsapp: mobile });
   }
 
   async removeWhatsapp(mobile: string) {
-    const validatedMobile = this.validateMobile(mobile);
-    if (!validatedMobile) return;
+    const isValid = this.validateMobile(mobile);
 
-    return this.removeInternal({ $whatsapp: validatedMobile });
+    if (!isValid) {
+      return getResponsePayload({
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
+        errorMessage:
+          'provided mobile number is invalid, must be as per E.164 standard',
+      });
+    }
+
+    return this.removeInternal({ $whatsapp: mobile });
   }
 
   async addWebPush(push: PushSubscription) {
     if (typeof push !== 'object') {
-      console.warn('[SuprSend]: push must be object');
-      return;
+      return getResponsePayload({
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
+        errorMessage:
+          'provided push subscription is invalid, must be an object',
+      });
     }
 
     const deviceId = this.config.deviceId;
@@ -273,8 +427,12 @@ export default class User {
 
   async removeWebPush(push: PushSubscription) {
     if (typeof push !== 'object') {
-      console.warn('[SuprSend]: push must be object');
-      return;
+      return getResponsePayload({
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
+        errorMessage:
+          'provided push subscription is invalid, must be an object',
+      });
     }
 
     const deviceId = this.config.deviceId;
@@ -288,8 +446,11 @@ export default class User {
 
   async addSlack(data: Dictionary) {
     if (typeof data !== 'object') {
-      console.warn('[SuprSend]: slack data must be object');
-      return;
+      return getResponsePayload({
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
+        errorMessage: 'provided slack data is invalid, must be an object',
+      });
     }
 
     return this.appendInternal({ $slack: data });
@@ -297,8 +458,11 @@ export default class User {
 
   async removeSlack(data: Dictionary) {
     if (typeof data !== 'object') {
-      console.warn('[SuprSend]: slack data must be object');
-      return;
+      return getResponsePayload({
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
+        errorMessage: 'provided slack data is invalid, must be an object',
+      });
     }
 
     return this.removeInternal({ $slack: data });
@@ -306,8 +470,11 @@ export default class User {
 
   async addMSTeams(data: Dictionary) {
     if (typeof data !== 'object') {
-      console.warn('[SuprSend]: ms_teams data must be object');
-      return;
+      return getResponsePayload({
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
+        errorMessage: 'provided ms_teams data is invalid, must be object',
+      });
     }
 
     return this.appendInternal({ $ms_teams: data });
@@ -315,8 +482,11 @@ export default class User {
 
   async removeMSTeams(data: Dictionary) {
     if (typeof data !== 'object') {
-      console.warn('[SuprSend]: ms_teams data must be object');
-      return;
+      return getResponsePayload({
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
+        errorMessage: 'provided ms_teams data is invalid, must be object',
+      });
     }
 
     return this.removeInternal({ $ms_teams: data });
@@ -324,8 +494,11 @@ export default class User {
 
   async setPreferredLanguage(language: string) {
     if (typeof language !== 'string') {
-      console.warn('[SuprSend]: language must be string');
-      return;
+      return getResponsePayload({
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
+        errorMessage: 'provided language is invalid, must be string',
+      });
     }
 
     return this.setInternal({ $preferred_language: language });
@@ -333,8 +506,11 @@ export default class User {
 
   async setTimezone(timezone: string) {
     if (typeof timezone !== 'string') {
-      console.warn('[SuprSend]: timezone must be string');
-      return;
+      return getResponsePayload({
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
+        errorMessage: 'provided timezone is invalid, must be string',
+      });
     }
 
     return this.setInternal({ $timezone: timezone });

@@ -1,4 +1,10 @@
-import { Dictionary, ApiClientOption, HandleRequest } from './interface';
+import {
+  Dictionary,
+  ApiClientOption,
+  HandleRequest,
+  ERROR_TYPE,
+  RESPONSE_STATUS,
+} from './interface';
 import { getResponsePayload } from './utils';
 
 export default class ApiClient {
@@ -64,8 +70,8 @@ export default class ApiClient {
   async request(reqData: HandleRequest) {
     if (!this.distinctId) {
       return getResponsePayload({
-        status: 'error',
-        errorType: 'VALIDATION_ERROR',
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
         errorMessage: 'user is not authenticated',
       });
     }
@@ -74,7 +80,9 @@ export default class ApiClient {
       const resp = await this.requestApiInstance(reqData);
       const respData = await resp.json();
 
-      const respStatus = respData?.status || (resp.ok ? 'success' : 'error');
+      const respStatus =
+        respData?.status ||
+        (resp.ok ? RESPONSE_STATUS.SUCCESS : RESPONSE_STATUS.ERROR);
 
       return getResponsePayload({
         status: respStatus,
@@ -88,10 +96,10 @@ export default class ApiClient {
       console.error(e);
 
       return getResponsePayload({
-        status: 'error',
+        status: RESPONSE_STATUS.ERROR,
         statusCode: 500,
         errorMessage: e?.message || 'network error',
-        errorType: 'NETWORK_ERROR',
+        errorType: ERROR_TYPE.NETWORK_ERROR,
       });
     }
   }

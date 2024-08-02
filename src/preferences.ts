@@ -7,6 +7,8 @@ import {
   CategoryChannel,
   ChannelLevelPreferenceOptions,
   ChannelPreference,
+  ERROR_TYPE,
+  RESPONSE_STATUS,
 } from './interface';
 import { debounceByType, getResponsePayload } from './utils';
 
@@ -94,8 +96,8 @@ export default class Preferences {
   async getCategory(category: string, args?: { tenantId?: string }) {
     if (!category) {
       return getResponsePayload({
-        status: 'error',
-        errorType: 'VALIDATION_ERROR',
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
         errorMessage: 'Category parameter is missing',
       });
     }
@@ -131,7 +133,7 @@ export default class Preferences {
     } else {
       Object.assign(subcategory, response.body);
       this.config.emitter.emit('preferences_updated', {
-        status: 'success',
+        status: RESPONSE_STATUS.SUCCESS,
         statusCode: 200,
         body: this.data as PreferenceData,
       });
@@ -151,7 +153,7 @@ export default class Preferences {
     } else {
       await this.getPreferences(this.preferenceArgs);
       this.config.emitter.emit('preferences_updated', {
-        status: 'success',
+        status: RESPONSE_STATUS.SUCCESS,
         statusCode: 200,
         body: this.data as PreferenceData,
       });
@@ -171,8 +173,8 @@ export default class Preferences {
       )
     ) {
       return getResponsePayload({
-        status: 'error',
-        errorType: 'VALIDATION_ERROR',
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
         errorMessage: !category
           ? 'Category parameter is missing'
           : 'Preference parameter is invalid',
@@ -181,16 +183,16 @@ export default class Preferences {
 
     if (!this.data) {
       return getResponsePayload({
-        status: 'error',
-        errorType: 'VALIDATION_ERROR',
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
         errorMessage: 'Call getPreferences method before performing action',
       });
     }
 
     if (!this.data.sections) {
       return getResponsePayload({
-        status: 'error',
-        errorType: 'VALIDATION_ERROR',
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
         errorMessage: "Sections doesn't exist",
       });
     }
@@ -217,8 +219,8 @@ export default class Preferences {
             }
           } else {
             return getResponsePayload({
-              status: 'error',
-              errorType: 'VALIDATION_ERROR',
+              status: RESPONSE_STATUS.ERROR,
+              errorType: ERROR_TYPE.VALIDATION_ERROR,
               errorMessage: 'Category preference is not editable',
             });
           }
@@ -229,14 +231,17 @@ export default class Preferences {
 
     if (!categoryData) {
       return getResponsePayload({
-        status: 'error',
-        errorType: 'VALIDATION_ERROR',
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
         errorMessage: 'Category not found',
       });
     }
 
     if (!dataUpdated) {
-      return getResponsePayload({ status: 'success', body: this.data });
+      return getResponsePayload({
+        status: RESPONSE_STATUS.SUCCESS,
+        body: this.data,
+      });
     }
 
     const optOutChannels: string[] = [];
@@ -259,7 +264,10 @@ export default class Preferences {
       { tenant_id: args?.tenantId }
     );
 
-    return getResponsePayload({ status: 'success', body: this.data });
+    return getResponsePayload({
+      status: RESPONSE_STATUS.SUCCESS,
+      body: this.data,
+    });
   }
 
   async updateChannelPreferenceInCategory(
@@ -270,8 +278,8 @@ export default class Preferences {
   ) {
     if (!channel || !category) {
       return getResponsePayload({
-        status: 'error',
-        errorType: 'VALIDATION_ERROR',
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
         errorMessage: !channel
           ? 'Channel parameter is missing'
           : 'Category parameter is missing',
@@ -284,24 +292,24 @@ export default class Preferences {
       )
     ) {
       return getResponsePayload({
-        status: 'error',
-        errorType: 'VALIDATION_ERROR',
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
         errorMessage: 'Preference parameter is invalid',
       });
     }
 
     if (!this.data) {
       return getResponsePayload({
-        status: 'error',
-        errorType: 'VALIDATION_ERROR',
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
         errorMessage: 'Call getPreferences method before performing action',
       });
     }
 
     if (!this.data.sections) {
       return getResponsePayload({
-        status: 'error',
-        errorType: 'VALIDATION_ERROR',
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
         errorMessage: "Sections doesn't exist",
       });
     }
@@ -337,8 +345,8 @@ export default class Preferences {
                 }
               } else {
                 return getResponsePayload({
-                  status: 'error',
-                  errorType: 'VALIDATION_ERROR',
+                  status: RESPONSE_STATUS.ERROR,
+                  errorType: ERROR_TYPE.VALIDATION_ERROR,
                   errorMessage: 'Channel preference is not editable',
                 });
               }
@@ -352,22 +360,25 @@ export default class Preferences {
 
     if (!categoryData) {
       return getResponsePayload({
-        status: 'error',
-        errorType: 'VALIDATION_ERROR',
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
         errorMessage: 'Category not found',
       });
     }
 
     if (!selectedChannelData) {
       return getResponsePayload({
-        status: 'error',
-        errorType: 'VALIDATION_ERROR',
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
         errorMessage: "Category's channel not found",
       });
     }
 
     if (!dataUpdated) {
-      return getResponsePayload({ status: 'success', body: this.data });
+      return getResponsePayload({
+        status: RESPONSE_STATUS.SUCCESS,
+        body: this.data,
+      });
     }
 
     const optOutChannels: string[] = [];
@@ -390,7 +401,10 @@ export default class Preferences {
       { tenant_id: args?.tenantId }
     );
 
-    return getResponsePayload({ status: 'success', body: this.data });
+    return getResponsePayload({
+      status: RESPONSE_STATUS.SUCCESS,
+      body: this.data,
+    });
   }
 
   async updateOverallChannelPreference(
@@ -405,8 +419,8 @@ export default class Preferences {
       ].includes(preference)
     ) {
       return getResponsePayload({
-        status: 'error',
-        errorType: 'VALIDATION_ERROR',
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
         errorMessage: !channel
           ? 'Channel parameter is missing'
           : 'Preference parameter is invalid',
@@ -415,16 +429,16 @@ export default class Preferences {
 
     if (!this.data) {
       return getResponsePayload({
-        status: 'error',
-        errorType: 'VALIDATION_ERROR',
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
         errorMessage: 'Call getPreferences method before performing action',
       });
     }
 
     if (!this.data.channel_preferences) {
       return getResponsePayload({
-        status: 'error',
-        errorType: 'VALIDATION_ERROR',
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
         errorMessage: "Channel preferences doesn't exist",
       });
     }
@@ -447,20 +461,26 @@ export default class Preferences {
 
     if (!channelData) {
       return getResponsePayload({
-        status: 'error',
-        errorType: 'VALIDATION_ERROR',
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
         errorMessage: 'Channel data not found',
       });
     }
 
     if (!dataUpdated) {
-      return getResponsePayload({ status: 'success', body: this.data });
+      return getResponsePayload({
+        status: RESPONSE_STATUS.SUCCESS,
+        body: this.data,
+      });
     }
 
     this.debouncedUpdateChannelPreferences(channelData.channel, {
       channel_preferences: [channelData],
     });
 
-    return getResponsePayload({ status: 'success', body: this.data });
+    return getResponsePayload({
+      status: RESPONSE_STATUS.SUCCESS,
+      body: this.data,
+    });
   }
 }

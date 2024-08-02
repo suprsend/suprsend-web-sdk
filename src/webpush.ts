@@ -1,5 +1,6 @@
 import { SuprSend } from './index';
-import { urlB64ToUint8Array } from './utils';
+import { urlB64ToUint8Array, getResponsePayload } from './utils';
+import { ERROR_TYPE, RESPONSE_STATUS } from './interface';
 
 export default class WebPush {
   private config: SuprSend;
@@ -26,6 +27,11 @@ export default class WebPush {
       const permission = await Notification.requestPermission();
       if (permission !== 'granted') {
         console.warn('[SuprSend]: Notification permission isnt granted');
+        return getResponsePayload({
+          status: RESPONSE_STATUS.ERROR,
+          errorType: ERROR_TYPE.VALIDATION_ERROR,
+          errorMessage: 'Notification permission isnt granted',
+        });
       }
 
       // wait until the service worker is ready
@@ -34,11 +40,17 @@ export default class WebPush {
       // if push subscribed present then do nothing
       const pushSubscriptionObj =
         await readyRegistration.pushManager.getSubscription();
-      if (pushSubscriptionObj) return;
+      if (pushSubscriptionObj) {
+        return getResponsePayload({ status: RESPONSE_STATUS.SUCCESS });
+      }
 
       if (!this.config.vapidKey) {
         console.warn('[SuprSend]: Provide vapid key while calling init');
-        return;
+        return getResponsePayload({
+          status: RESPONSE_STATUS.ERROR,
+          errorType: ERROR_TYPE.VALIDATION_ERROR,
+          errorMessage: 'Vapid key is missing in suprsend.init',
+        });
       }
 
       // get the push token object
@@ -48,9 +60,15 @@ export default class WebPush {
       });
 
       // send push token object to suprsend
-      return this.config.user?.addWebPush(subscription);
-    } catch (e) {
+      return this.config.user.addWebPush(subscription);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (e: any) {
       console.warn('SuprSend: Error getting push subscription', e);
+      return getResponsePayload({
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.UNKNOWN_ERROR,
+        errorMessage: e?.message || 'Notification permission isnt granted',
+      });
     }
   }
 
@@ -62,20 +80,25 @@ export default class WebPush {
       return this.handleRegisterPush();
     } else {
       console.warn("[SuprSend]: Webpush isn't supported");
+      return getResponsePayload({
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
+        errorMessage: "Webpush isn't supported",
+      });
     }
   }
 
   async updatePushSubscription() {
     const subscription = await this.getPushSubscription();
     if (subscription) {
-      return this.config.user?.addWebPush(subscription);
+      return this.config.user.addWebPush(subscription);
     }
   }
 
   async removePushSubscription() {
     const subscription = await this.getPushSubscription();
     if (subscription) {
-      return this.config.user?.removeWebPush(subscription);
+      return this.config.user.removeWebPush(subscription);
     }
   }
 

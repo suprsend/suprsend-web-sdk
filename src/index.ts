@@ -4,8 +4,8 @@ import {
   EmitterEvents,
   AuthenticateOptions,
   RefreshTokenCallback,
-  PreferenceOptions,
-  ChannelLevelPreferenceOptions,
+  ERROR_TYPE,
+  RESPONSE_STATUS,
 } from './interface';
 import ApiClient from './api';
 import {
@@ -47,7 +47,7 @@ export class SuprSend {
 
   init(publicApiKey: string, options?: SuprSendOptions) {
     if (!publicApiKey) {
-      throw new Error('[SuprSend]: publicApiKey is mandatory');
+      throw new Error('[SuprSend]: publicApiKey is missing');
     }
 
     this.publicApiKey = publicApiKey;
@@ -137,17 +137,17 @@ export class SuprSend {
   ) {
     if (!distinctId) {
       return getResponsePayload({
-        status: 'error',
-        errorType: 'VALIDATION_ERROR',
-        errorMessage: 'distinctId is mandatory',
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
+        errorMessage: 'distinctId is missing',
       });
     }
 
     // other user already present
     if (this.apiClient && this.distinctId !== distinctId) {
       return getResponsePayload({
-        status: 'error',
-        errorType: 'VALIDATION_ERROR',
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
         errorMessage:
           'User already loggedin, reset current user to login new user',
       });
@@ -164,12 +164,12 @@ export class SuprSend {
       if (options?.refreshUserToken) {
         this.handleRefreshUserToken(options.refreshUserToken);
       }
-      return getResponsePayload({ status: 'success' });
+      return getResponsePayload({ status: RESPONSE_STATUS.SUCCESS });
     }
 
     // ignore more than one identify call
     if (this.apiClient) {
-      return getResponsePayload({ status: 'success' });
+      return getResponsePayload({ status: RESPONSE_STATUS.SUCCESS });
     }
 
     this.distinctId = distinctId;
@@ -187,7 +187,7 @@ export class SuprSend {
     // already loggedin
     if (authenticatedDistinctId == this.distinctId) {
       this.webpush.updatePushSubscription();
-      return getResponsePayload({ status: 'success' });
+      return getResponsePayload({ status: RESPONSE_STATUS.SUCCESS });
     }
 
     // first time login
@@ -200,7 +200,7 @@ export class SuprSend {
       },
     });
 
-    if (resp.status === 'success') {
+    if (resp.status === RESPONSE_STATUS.SUCCESS) {
       // store user so that other method calls dont need api calls
       this.localStorageService.set(AUTHENTICATED_DISTINCT_ID, this.distinctId);
       this.webpush.updatePushSubscription();
@@ -219,6 +219,14 @@ export class SuprSend {
 
   async track(event: string, properties?: Dictionary) {
     let propertiesObj: Dictionary = {};
+
+    if (!event) {
+      return getResponsePayload({
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
+        errorMessage: 'event name is missing',
+      });
+    }
 
     if (this.envProperties) {
       propertiesObj = { ...propertiesObj, ...this.envProperties };
@@ -251,11 +259,11 @@ export class SuprSend {
     if (this.userTokenExpirationTimer) {
       clearTimeout(this.userTokenExpirationTimer);
     }
-    return getResponsePayload({ status: 'success' });
+    return getResponsePayload({ status: RESPONSE_STATUS.SUCCESS });
   }
 }
 
 const suprsendInstance = new SuprSend();
 
 export default suprsendInstance;
-export { ChannelLevelPreferenceOptions, PreferenceOptions };
+export * from './interface';

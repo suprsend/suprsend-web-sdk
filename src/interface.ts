@@ -13,7 +13,7 @@ export interface AuthenticateOptions {
 }
 
 export interface ResponseOptions {
-  status: 'error' | 'success';
+  status: RESPONSE_STATUS.ERROR | RESPONSE_STATUS.SUCCESS;
   statusCode?: number;
   // eslint-disable-next-line
   body?: any;
@@ -27,7 +27,7 @@ interface IError {
 }
 
 export interface ApiResponse {
-  status: 'success' | 'error';
+  status: RESPONSE_STATUS.ERROR | RESPONSE_STATUS.SUCCESS;
   statusCode?: number;
   error?: IError;
   // eslint-disable-next-line
@@ -96,4 +96,27 @@ export interface HandleRequest {
   type: 'get' | 'post';
   path: string;
   payload?: Dictionary;
+}
+
+export interface ValidatedDataOptions {
+  allowReservedKeys?: boolean;
+  valueType?: string;
+}
+
+export interface IStorageService<T> {
+  get<K extends keyof T>(key: K): T[K] | null;
+  set<K extends keyof T>(key: K, value: T[K]): void;
+  remove<K extends keyof T>(key: K): void;
+  clear(): void;
+}
+
+export enum ERROR_TYPE {
+  VALIDATION_ERROR = 'VALIDATION_ERROR',
+  NETWORK_ERROR = 'NETWORK_ERROR',
+  UNKNOWN_ERROR = 'UNKNOWN_ERROR',
+}
+
+export enum RESPONSE_STATUS {
+  SUCCESS = 'success',
+  ERROR = 'error',
 }

@@ -1,4 +1,10 @@
-import { ApiResponse, Dictionary, ResponseOptions } from './interface';
+import {
+  ApiResponse,
+  Dictionary,
+  ResponseOptions,
+  IStorageService,
+  RESPONSE_STATUS,
+} from './interface';
 
 export function uuid() {
   let dt = new Date().getTime();
@@ -99,13 +105,6 @@ export function os() {
   return '';
 }
 
-interface IStorageService<T> {
-  get<K extends keyof T>(key: K): T[K] | null;
-  set<K extends keyof T>(key: K, value: T[K]): void;
-  remove<K extends keyof T>(key: K): void;
-  clear(): void;
-}
-
 export class StorageService<T> implements IStorageService<T> {
   constructor(private readonly storage: Storage) {}
 
@@ -190,7 +189,7 @@ export function getResponsePayload(options: ResponseOptions) {
     response.body = options.body;
   }
 
-  if (options.status === 'error') {
+  if (options.status === RESPONSE_STATUS.ERROR) {
     response.error = {
       type: options.errorType,
       message: options.errorMessage,
