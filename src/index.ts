@@ -103,7 +103,7 @@ export class SuprSend {
     return this.apiClient;
   }
 
-  evenApi(payload: Dictionary) {
+  eventApi(payload: Dictionary) {
     return this.client().request({ path: 'v2/event', payload, type: 'post' });
   }
 
@@ -119,9 +119,19 @@ export class SuprSend {
       const timeDiff = expiresOn - now - refreshBefore;
 
       this.userTokenExpirationTimer = setTimeout(async () => {
-        const newToken = await refreshUserToken(this.userToken as string);
+        let newToken = '';
+        try {
+          newToken = await refreshUserToken(this.userToken as string);
+        } catch (e) {
+          // retry fetching token
+          try {
+            newToken = await refreshUserToken(this.userToken as string);
+          } catch (e) {
+            console.warn("[SuprSend]: Couldn't fetch new userToken", e);
+          }
+        }
 
-        if (typeof newToken === 'string') {
+        if (newToken && typeof newToken === 'string') {
           this.identify(this.distinctId, newToken, {
             refreshUserToken: refreshUserToken,
           });
@@ -144,7 +154,7 @@ export class SuprSend {
     }
 
     // other user already present
-    if (this.apiClient && this.distinctId !== distinctId) {
+    if (this.apiClient && this.distinctId && this.distinctId !== distinctId) {
       return getResponsePayload({
         status: RESPONSE_STATUS.ERROR,
         errorType: ERROR_TYPE.VALIDATION_ERROR,
@@ -191,7 +201,7 @@ export class SuprSend {
     }
 
     // first time login
-    const resp = await this.evenApi({
+    const resp = await this.eventApi({
       event: '$identify',
       $insert_id: uuid(),
       $time: epochMs(),
@@ -235,7 +245,7 @@ export class SuprSend {
       propertiesObj = { ...propertiesObj, ...properties };
     }
 
-    return this.evenApi({
+    return this.eventApi({
       event: String(event),
       $insert_id: uuid(),
       $time: epochMs(),

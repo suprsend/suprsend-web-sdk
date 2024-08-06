@@ -92,7 +92,7 @@ export default class User {
   }
 
   private async triggerUserEvent(data: Dictionary) {
-    return this.config.evenApi({
+    return this.config.eventApi({
       distinct_id: this.config.distinctId,
       $insert_id: uuid(),
       $time: epochMs(),
