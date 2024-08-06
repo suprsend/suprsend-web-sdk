@@ -68,6 +68,14 @@ export default class ApiClient {
   }
 
   async request(reqData: HandleRequest) {
+    if (!this.publicApiKey) {
+      return getResponsePayload({
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
+        errorMessage: 'SuprSend is not initialised please call init method',
+      });
+    }
+
     if (!this.distinctId) {
       return getResponsePayload({
         status: RESPONSE_STATUS.ERROR,

@@ -145,6 +145,14 @@ export class SuprSend {
     userToken?: string,
     options?: AuthenticateOptions
   ) {
+    if (!this.publicApiKey) {
+      return getResponsePayload({
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
+        errorMessage: 'SuprSend is not initialised please call init method',
+      });
+    }
+
     if (!distinctId) {
       return getResponsePayload({
         status: RESPONSE_STATUS.ERROR,
@@ -273,7 +281,7 @@ export class SuprSend {
   }
 }
 
-const suprsendInstance = new SuprSend();
+const suprsend = new SuprSend();
 
-export default suprsendInstance;
+export default suprsend;
 export * from './interface';
