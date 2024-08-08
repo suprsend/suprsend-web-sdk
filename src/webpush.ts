@@ -1,5 +1,5 @@
 import { SuprSend } from './index';
-import { urlB64ToUint8Array, getResponsePayload } from './utils';
+import { urlB64ToUint8Array, getResponsePayload, windowSupport } from './utils';
 import { ERROR_TYPE, RESPONSE_STATUS } from './interface';
 
 export default class WebPush {
@@ -10,6 +10,8 @@ export default class WebPush {
   }
 
   private async getPushSubscription() {
+    if (!windowSupport()) return;
+
     const registration = await navigator.serviceWorker.getRegistration();
     if (!registration) return;
 
@@ -74,7 +76,9 @@ export default class WebPush {
 
   async registerPush() {
     const pushSupported =
-      'serviceWorker' in navigator && 'PushManager' in window;
+      windowSupport() &&
+      'serviceWorker' in navigator &&
+      'PushManager' in window;
 
     if (pushSupported) {
       return this.handleRegisterPush();

@@ -7,12 +7,16 @@ import {
 } from './interface';
 import {
   epochMs,
+  getLocalStorageData,
   getResponsePayload,
   isArrayEmpty,
   isObjectEmpty,
+  setLocalStorageData,
   uuid,
 } from './utils';
 import Preferences from './preferences';
+
+const DEVICE_ID_KEY = 'ss_device_id';
 
 export default class User {
   private config: SuprSend;
@@ -406,6 +410,17 @@ export default class User {
     return this.removeInternal({ $whatsapp: mobile });
   }
 
+  private getDeviceId(): string {
+    let deviceId = getLocalStorageData(DEVICE_ID_KEY);
+
+    if (!deviceId) {
+      deviceId = uuid();
+      setLocalStorageData(DEVICE_ID_KEY, deviceId);
+    }
+
+    return deviceId;
+  }
+
   async addWebPush(push: PushSubscription) {
     if (typeof push !== 'object') {
       return getResponsePayload({
@@ -416,7 +431,7 @@ export default class User {
       });
     }
 
-    const deviceId = this.config.deviceId;
+    const deviceId: string = this.getDeviceId();
 
     return this.appendInternal({
       $webpush: push,
@@ -435,7 +450,7 @@ export default class User {
       });
     }
 
-    const deviceId = this.config.deviceId;
+    const deviceId: string = this.getDeviceId();
 
     return this.removeInternal({
       $webpush: push,

@@ -14,8 +14,11 @@ import {
   browser,
   browserVersion,
   os,
-  StorageService,
+  windowSupport,
   getResponsePayload,
+  getLocalStorageData,
+  setLocalStorageData,
+  removeLocalStorageData,
 } from './utils';
 import User from './user';
 import WebPush from './webpush';
@@ -25,27 +28,24 @@ import jwt_decode from 'jwt-decode';
 
 const DEFAULT_HOST = 'https://collector-staging.suprsend.workers.dev';
 const DEFAULT_SW_FILENAME = 'serviceworker.js';
-const DEVICE_ID_KEY = 'ss_device_id';
 const AUTHENTICATED_DISTINCT_ID = 'ss_distinct_id';
 
 export class SuprSend {
   public host: string;
-  private publicApiKey: string;
+  public publicApiKey: string;
   public distinctId: unknown;
-  private userToken?: string;
-  private envProperties?: Dictionary;
+  public userToken?: string;
   public vapidKey: string;
   public swFileName: string;
   private apiClient: ApiClient | null = null;
-  private localStorageService = new StorageService<Dictionary>(
-    window.localStorage
-  );
+  private userTokenExpirationTimer: ReturnType<typeof setTimeout> | null = null;
+  public authenticateOptions?: AuthenticateOptions;
+
   readonly user = new User(this);
   readonly webpush = new WebPush(this);
   readonly emitter: Emitter<EmitterEvents> = mitt();
-  private userTokenExpirationTimer: ReturnType<typeof setTimeout> | null = null;
 
-  init(publicApiKey: string, options?: SuprSendOptions) {
+  constructor(publicApiKey: string, options?: SuprSendOptions) {
     if (!publicApiKey) {
       throw new Error('[SuprSend]: publicApiKey is missing');
     }
@@ -54,61 +54,22 @@ export class SuprSend {
     this.host = options?.host || DEFAULT_HOST;
     this.vapidKey = options?.vapidKey || '';
     this.swFileName = options?.swFileName || DEFAULT_SW_FILENAME;
-
-    this.setEnvProperties();
   }
 
-  private setEnvProperties() {
-    const deviceId = this.deviceId;
+  private getEnvProperties() {
+    if (!windowSupport()) return;
 
-    if (!deviceId) {
-      const deviceId = uuid();
-      this.localStorageService.set(DEVICE_ID_KEY, deviceId);
-    }
-
-    this.envProperties = {
+    return {
       $os: os(),
       $browser: browser(),
       $browser_version: browserVersion(),
       $sdk_type: 'Browser',
-      $device_id: deviceId,
       $sdk_version: packageJSON.version,
     };
   }
 
-  private createApiClient() {
-    return new ApiClient({
-      publicApiKey: this.publicApiKey,
-      host: this.host,
-      userToken: this.userToken || '',
-      distinctId: this.distinctId,
-    });
-  }
-
-  get deviceId() {
-    return this.localStorageService.get(DEVICE_ID_KEY);
-  }
-
-  client() {
-    if (!this.distinctId) {
-      console.warn(
-        '[SuprSend]: distinctId is missing. User should be authenticated'
-      );
-    }
-
-    if (!this.apiClient) {
-      this.apiClient = this.createApiClient(); // create new client
-    }
-
-    return this.apiClient;
-  }
-
-  eventApi(payload: Dictionary) {
-    return this.client().request({ path: 'v2/event', payload, type: 'post' });
-  }
-
   private handleRefreshUserToken(refreshUserToken: RefreshTokenCallback) {
-    if (!this.userToken) return;
+    if (!this.userToken || !windowSupport()) return;
 
     const jwtPayload = jwt_decode(this.userToken) as Dictionary;
     const expiresOn = ((jwtPayload.exp as number) || 0) * 1000; // in ms
@@ -118,6 +79,9 @@ export class SuprSend {
     if (expiresOn && expiresOn > now) {
       const timeDiff = expiresOn - now - refreshBefore;
 
+      if (this.userTokenExpirationTimer) {
+        clearTimeout(this.userTokenExpirationTimer);
+      }
       this.userTokenExpirationTimer = setTimeout(async () => {
         let newToken = '';
         try {
@@ -132,12 +96,28 @@ export class SuprSend {
         }
 
         if (newToken && typeof newToken === 'string') {
-          this.identify(this.distinctId, newToken, {
-            refreshUserToken: refreshUserToken,
-          });
+          this.identify(this.distinctId, newToken, this.authenticateOptions);
         }
       }, timeDiff);
     }
+  }
+
+  client() {
+    if (!this.distinctId) {
+      console.warn(
+        '[SuprSend]: distinctId is missing. User should be authenticated'
+      );
+    }
+
+    if (!this.apiClient) {
+      this.apiClient = new ApiClient(this);
+    }
+
+    return this.apiClient;
+  }
+
+  eventApi(payload: Dictionary) {
+    return this.client().request({ path: 'v2/event', payload, type: 'post' });
   }
 
   async identify(
@@ -178,7 +158,7 @@ export class SuprSend {
       this.userToken !== userToken
     ) {
       this.userToken = userToken;
-      this.apiClient = this.createApiClient();
+      this.apiClient = new ApiClient(this);
       if (options?.refreshUserToken) {
         this.handleRefreshUserToken(options.refreshUserToken);
       }
@@ -192,9 +172,9 @@ export class SuprSend {
 
     this.distinctId = distinctId;
     this.userToken = userToken;
-    this.apiClient = this.createApiClient();
-
-    const authenticatedDistinctId = this.localStorageService.get(
+    this.apiClient = new ApiClient(this);
+    this.authenticateOptions = options;
+    const authenticatedDistinctId = getLocalStorageData(
       AUTHENTICATED_DISTINCT_ID
     );
 
@@ -220,8 +200,8 @@ export class SuprSend {
 
     if (resp.status === RESPONSE_STATUS.SUCCESS) {
       // store user so that other method calls dont need api calls
-      this.localStorageService.set(AUTHENTICATED_DISTINCT_ID, this.distinctId);
       this.webpush.updatePushSubscription();
+      setLocalStorageData(AUTHENTICATED_DISTINCT_ID, this.distinctId as string);
     } else {
       // reset user data so that user can retry
       this.reset({ unsubscribePush: false });
@@ -229,7 +209,7 @@ export class SuprSend {
     return resp;
   }
 
-  isIdentified(checkUserToken: boolean) {
+  isIdentified(checkUserToken?: boolean) {
     return checkUserToken
       ? !!(this.userToken && this.distinctId)
       : !!this.distinctId;
@@ -237,6 +217,7 @@ export class SuprSend {
 
   async track(event: string, properties?: Dictionary) {
     let propertiesObj: Dictionary = {};
+    const envProperties = this.getEnvProperties();
 
     if (!event) {
       return getResponsePayload({
@@ -246,8 +227,8 @@ export class SuprSend {
       });
     }
 
-    if (this.envProperties) {
-      propertiesObj = { ...propertiesObj, ...this.envProperties };
+    if (envProperties) {
+      propertiesObj = { ...propertiesObj, ...envProperties };
     }
     if (typeof properties === 'object') {
       propertiesObj = { ...propertiesObj, ...properties };
@@ -272,8 +253,8 @@ export class SuprSend {
     this.apiClient = null;
     this.distinctId = null;
     this.userToken = '';
+    removeLocalStorageData(AUTHENTICATED_DISTINCT_ID);
 
-    this.localStorageService.remove(AUTHENTICATED_DISTINCT_ID);
     if (this.userTokenExpirationTimer) {
       clearTimeout(this.userTokenExpirationTimer);
     }
@@ -281,7 +262,5 @@ export class SuprSend {
   }
 }
 
-const suprsend = new SuprSend();
-
-export default suprsend;
+export default SuprSend;
 export * from './interface';

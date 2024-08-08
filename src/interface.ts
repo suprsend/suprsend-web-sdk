@@ -85,13 +85,6 @@ export type EmitterEvents = {
   preferences_error: ApiResponse;
 };
 
-export interface ApiClientOption {
-  host: string;
-  publicApiKey: string;
-  userToken: string;
-  distinctId: unknown;
-}
-
 export interface HandleRequest {
   type: 'get' | 'post';
   path: string;
@@ -101,13 +94,6 @@ export interface HandleRequest {
 export interface ValidatedDataOptions {
   allowReservedKeys?: boolean;
   valueType?: string;
-}
-
-export interface IStorageService<T> {
-  get<K extends keyof T>(key: K): T[K] | null;
-  set<K extends keyof T>(key: K, value: T[K]): void;
-  remove<K extends keyof T>(key: K): void;
-  clear(): void;
 }
 
 export enum ERROR_TYPE {

@@ -2,7 +2,6 @@ import {
   ApiResponse,
   Dictionary,
   ResponseOptions,
-  IStorageService,
   RESPONSE_STATUS,
 } from './interface';
 
@@ -105,41 +104,10 @@ export function os() {
   return '';
 }
 
-export class StorageService<T> implements IStorageService<T> {
-  constructor(private readonly storage: Storage) {}
-
-  set<K extends keyof T>(key: K, value: T[K]): void {
-    this.storage.setItem(key.toString(), JSON.stringify(value));
-  }
-
-  get<K extends keyof T>(key: K): T[K] | null {
-    const value = this.storage.getItem(key.toString());
-
-    if (
-      value === null ||
-      value === 'null' ||
-      value === undefined ||
-      value === 'undefined'
-    ) {
-      return null;
-    }
-
-    return JSON.parse(value);
-  }
-
-  remove<K extends keyof T>(key: K): void {
-    this.storage.removeItem(key.toString());
-  }
-
-  clear(): void {
-    this.storage.clear();
-  }
-}
-
 export function urlB64ToUint8Array(base64String: string) {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-  const rawData = window.atob(base64);
+  const rawData = atob(base64);
   const outputArray = new Uint8Array(rawData.length);
   for (let i = 0; i < rawData.length; ++i) {
     outputArray[i] = rawData.charCodeAt(i);
@@ -196,4 +164,35 @@ export function getResponsePayload(options: ResponseOptions) {
     };
   }
   return response;
+}
+
+export function windowSupport() {
+  return typeof window !== 'undefined';
+}
+
+export function setLocalStorageData(key: string, value: string) {
+  if (!windowSupport()) return;
+
+  if (typeof value === 'object') {
+    value = JSON.stringify(value);
+  }
+  localStorage.setItem(key, value);
+}
+
+export function getLocalStorageData(key: string) {
+  if (!windowSupport()) return;
+
+  const value = localStorage.getItem(key);
+  if (!value) return;
+  try {
+    return JSON.parse(value);
+  } catch (e) {
+    return value;
+  }
+}
+
+export function removeLocalStorageData(key: string) {
+  if (!windowSupport()) return;
+
+  localStorage.removeItem(key);
 }

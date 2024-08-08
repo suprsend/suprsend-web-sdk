@@ -1,37 +1,32 @@
+import { SuprSend } from '.';
 import {
   Dictionary,
-  ApiClientOption,
   HandleRequest,
   ERROR_TYPE,
   RESPONSE_STATUS,
 } from './interface';
 import { getResponsePayload } from './utils';
+import jwt_decode from 'jwt-decode';
 
 export default class ApiClient {
-  private publicApiKey: string;
-  private userToken: string;
-  private host: string;
-  private distinctId: unknown;
+  private config: SuprSend;
 
-  constructor(options: ApiClientOption) {
-    this.host = options.host;
-    this.publicApiKey = options.publicApiKey;
-    this.userToken = options.userToken;
-    this.distinctId = options.distinctId;
+  constructor(config: SuprSend) {
+    this.config = config;
   }
 
   private getUrl(path: string) {
-    return `${this.host}/${path}`;
+    return `${this.config.host}/${path}`;
   }
 
   private getHeaders() {
     const headers = {
       'Content-Type': 'application/json',
-      Authorization: this.publicApiKey,
+      Authorization: this.config.publicApiKey,
     };
 
-    if (this.userToken) {
-      headers['x-ss-signature'] = this.userToken;
+    if (this.config.userToken) {
+      headers['x-ss-signature'] = this.config.userToken;
     }
 
     return headers;
@@ -68,7 +63,7 @@ export default class ApiClient {
   }
 
   async request(reqData: HandleRequest) {
-    if (!this.publicApiKey) {
+    if (!this.config.publicApiKey) {
       return getResponsePayload({
         status: RESPONSE_STATUS.ERROR,
         errorType: ERROR_TYPE.VALIDATION_ERROR,
@@ -76,12 +71,40 @@ export default class ApiClient {
       });
     }
 
-    if (!this.distinctId) {
+    if (!this.config.distinctId) {
       return getResponsePayload({
         status: RESPONSE_STATUS.ERROR,
         errorType: ERROR_TYPE.VALIDATION_ERROR,
         errorMessage: 'user is not authenticated',
       });
+    }
+
+    if (
+      this.config.authenticateOptions?.refreshUserToken &&
+      this.config.userToken
+    ) {
+      const jwtPayload = jwt_decode(this.config.userToken) as Dictionary;
+      const expiresOn = ((jwtPayload.exp as number) || 0) * 1000; // in ms
+      const now = Date.now(); // in ms
+      const hasExpired = expiresOn <= now;
+      if (hasExpired) {
+        try {
+          const newUserToken =
+            await this.config.authenticateOptions.refreshUserToken(
+              this.config.userToken
+            );
+
+          if (newUserToken && typeof newUserToken === 'string') {
+            this.config.identify(
+              this.config.distinctId,
+              newUserToken,
+              this.config.authenticateOptions
+            );
+          }
+        } catch (e) {
+          // error while getting token go ahead with calling api
+        }
+      }
     }
 
     try {
