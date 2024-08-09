@@ -435,7 +435,7 @@ export default class User {
 
     return this.appendInternal({
       $webpush: push,
-      $pushvendor: 'vapid',
+      $id_provider: 'vapid',
       $device_id: deviceId,
     });
   }
@@ -454,7 +454,7 @@ export default class User {
 
     return this.removeInternal({
       $webpush: push,
-      $pushvendor: 'vapid',
+      $id_provider: 'vapid',
       $device_id: deviceId,
     });
   }

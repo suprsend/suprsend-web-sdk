@@ -31,8 +31,8 @@ export default class WebPush {
         console.warn('[SuprSend]: Notification permission isnt granted');
         return getResponsePayload({
           status: RESPONSE_STATUS.ERROR,
-          errorType: ERROR_TYPE.VALIDATION_ERROR,
-          errorMessage: 'Notification permission isnt granted',
+          errorType: ERROR_TYPE.PERMISSION_DENIED,
+          errorMessage: "Notification permission isn't granted",
         });
       }
 
@@ -43,15 +43,18 @@ export default class WebPush {
       const pushSubscriptionObj =
         await readyRegistration.pushManager.getSubscription();
       if (pushSubscriptionObj) {
-        return getResponsePayload({ status: RESPONSE_STATUS.SUCCESS });
+        return this.config.user.addWebPush(pushSubscriptionObj);
       }
 
       if (!this.config.vapidKey) {
-        console.warn('[SuprSend]: Provide vapid key while calling init');
+        console.warn(
+          '[SuprSend]: Vapid key is missing. Add it while creating SuprSend instance'
+        );
         return getResponsePayload({
           status: RESPONSE_STATUS.ERROR,
           errorType: ERROR_TYPE.VALIDATION_ERROR,
-          errorMessage: 'Vapid key is missing in suprsend.init',
+          errorMessage:
+            'Vapid key is missing. Add it while creating SuprSend instance',
         });
       }
 
@@ -69,7 +72,8 @@ export default class WebPush {
       return getResponsePayload({
         status: RESPONSE_STATUS.ERROR,
         errorType: ERROR_TYPE.UNKNOWN_ERROR,
-        errorMessage: e?.message || 'Notification permission isnt granted',
+        errorMessage:
+          e?.message || 'Unknown error occured while registering for push',
       });
     }
   }
@@ -86,7 +90,7 @@ export default class WebPush {
       console.warn("[SuprSend]: Webpush isn't supported");
       return getResponsePayload({
         status: RESPONSE_STATUS.ERROR,
-        errorType: ERROR_TYPE.VALIDATION_ERROR,
+        errorType: ERROR_TYPE.UNSUPPORTED_ACTION,
         errorMessage: "Webpush isn't supported",
       });
     }
@@ -108,5 +112,10 @@ export default class WebPush {
 
   notificationPermission() {
     return Notification.permission;
+  }
+
+  async pushSubscribed() {
+    const subscription = await this.getPushSubscription();
+    return !!subscription;
   }
 }

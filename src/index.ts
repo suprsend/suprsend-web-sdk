@@ -11,9 +11,6 @@ import ApiClient from './api';
 import {
   uuid,
   epochMs,
-  browser,
-  browserVersion,
-  os,
   windowSupport,
   getResponsePayload,
   getLocalStorageData,
@@ -22,7 +19,6 @@ import {
 } from './utils';
 import User from './user';
 import WebPush from './webpush';
-import packageJSON from '../package.json';
 import mitt, { Emitter } from 'mitt';
 import jwt_decode from 'jwt-decode';
 
@@ -54,18 +50,6 @@ export class SuprSend {
     this.host = options?.host || DEFAULT_HOST;
     this.vapidKey = options?.vapidKey || '';
     this.swFileName = options?.swFileName || DEFAULT_SW_FILENAME;
-  }
-
-  private getEnvProperties() {
-    if (!windowSupport()) return;
-
-    return {
-      $os: os(),
-      $browser: browser(),
-      $browser_version: browserVersion(),
-      $sdk_type: 'Browser',
-      $sdk_version: packageJSON.version,
-    };
   }
 
   private handleRefreshUserToken(refreshUserToken: RefreshTokenCallback) {
@@ -125,14 +109,6 @@ export class SuprSend {
     userToken?: string,
     options?: AuthenticateOptions
   ) {
-    if (!this.publicApiKey) {
-      return getResponsePayload({
-        status: RESPONSE_STATUS.ERROR,
-        errorType: ERROR_TYPE.VALIDATION_ERROR,
-        errorMessage: 'SuprSend is not initialised please call init method',
-      });
-    }
-
     if (!distinctId) {
       return getResponsePayload({
         status: RESPONSE_STATUS.ERROR,
@@ -217,7 +193,6 @@ export class SuprSend {
 
   async track(event: string, properties?: Dictionary) {
     let propertiesObj: Dictionary = {};
-    const envProperties = this.getEnvProperties();
 
     if (!event) {
       return getResponsePayload({
@@ -227,9 +202,6 @@ export class SuprSend {
       });
     }
 
-    if (envProperties) {
-      propertiesObj = { ...propertiesObj, ...envProperties };
-    }
     if (typeof properties === 'object') {
       propertiesObj = { ...propertiesObj, ...properties };
     }
