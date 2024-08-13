@@ -104,6 +104,10 @@ export class SuprSend {
     return this.client().request({ path: 'v2/event', payload, type: 'post' });
   }
 
+  /**
+   *  Used to authenticate user. Usually called just after successful login and on reload of loggedin route to re-authenticate loggedin user.
+   *  In production env's userToken is mandatory for security purposes.
+   */
   async identify(
     distinctId: unknown,
     userToken?: string,
@@ -185,12 +189,18 @@ export class SuprSend {
     return resp;
   }
 
+  /**
+   * Check's if SuprSend instance is authenticated. To check if userToken is also present pass true.
+   */
   isIdentified(checkUserToken?: boolean) {
     return checkUserToken
       ? !!(this.userToken && this.distinctId)
       : !!this.distinctId;
   }
 
+  /**
+   *  Used to trigger events to suprsend.
+   */
   async track(event: string, properties?: Dictionary) {
     let propertiesObj: Dictionary = {};
 
@@ -215,6 +225,9 @@ export class SuprSend {
     });
   }
 
+  /**
+   * Clears user related data attached to SuprSend instance. Usually called during logout.
+   */
   async reset(options?: { unsubscribePush?: boolean }) {
     const unsubscribePush = !(options?.unsubscribePush === false); // defaults to true
 

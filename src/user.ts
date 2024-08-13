@@ -104,7 +104,10 @@ export default class User {
     });
   }
 
-  set(arg1: string | Dictionary, arg2?: unknown) {
+  /**
+   * Used to set user properties. Keys with $ and ss_ will be removed.
+   */
+  async set(arg1: string | Dictionary, arg2?: unknown) {
     const data = this.formatParamsToObj(arg1, arg2);
     if (!data) {
       return getResponsePayload({
@@ -126,7 +129,11 @@ export default class User {
     return this.triggerUserEvent({ $set: validatedData });
   }
 
-  setOnce(arg1: string | Dictionary, arg2?: unknown) {
+  /**
+   * Used to set user properties only once. Properties once set cannot be changed later.
+   * Keys with $ and ss_ will be removed.
+   */
+  async setOnce(arg1: string | Dictionary, arg2?: unknown) {
     const data = this.formatParamsToObj(arg1, arg2);
     if (!data) {
       return getResponsePayload({
@@ -148,7 +155,11 @@ export default class User {
     return this.triggerUserEvent({ $set_once: validatedData });
   }
 
-  increment(arg1: string | Dictionary, arg2?: number) {
+  /**
+   * Used to increment/decrement user properties whose values are numbers. To decrement use -ve values.
+   * Keys with $ and ss_ will be removed.
+   */
+  async increment(arg1: string | Dictionary, arg2?: number) {
     const data = this.formatParamsToObj(arg1, arg2);
     if (!data) {
       return getResponsePayload({
@@ -170,7 +181,11 @@ export default class User {
     return this.triggerUserEvent({ $add: validatedData });
   }
 
-  append(arg1: string | Dictionary, arg2?: unknown) {
+  /**
+   * Used to add items to list if user property is list (example: wishlist: [iphone, macbook]).
+   * Keys with $ and ss_ will be removed.
+   */
+  async append(arg1: string | Dictionary, arg2?: unknown) {
     const data = this.formatParamsToObj(arg1, arg2);
     if (!data) {
       return getResponsePayload({
@@ -192,7 +207,11 @@ export default class User {
     return this.triggerUserEvent({ $append: validatedData });
   }
 
-  remove(arg1: string | Dictionary, arg2?: unknown) {
+  /**
+   * Used to remove items from list if user property is list.
+   * Keys with $ and ss_ will be removed.
+   */
+  async remove(arg1: string | Dictionary, arg2?: unknown) {
     const data = this.formatParamsToObj(arg1, arg2);
     if (!data) {
       return getResponsePayload({
@@ -214,7 +233,10 @@ export default class User {
     return this.triggerUserEvent({ $remove: validatedData });
   }
 
-  unset(arg: string | string[]) {
+  /**
+   * Used to remove user property. Keys with $ and ss_ will be removed.
+   */
+  async unset(arg: string | string[]) {
     const data = this.formatParamsToArray(arg);
     if (!data) {
       return getResponsePayload({
@@ -350,6 +372,9 @@ export default class User {
     return this.removeInternal({ $email: email });
   }
 
+  /**
+   * Mobile number must be as per {@link https://www.twilio.com/docs/glossary/what-e164 E.164 standard}.
+   */
   async addSms(mobile: string) {
     const isValid = this.validateMobile(mobile);
 
@@ -365,6 +390,9 @@ export default class User {
     return this.appendInternal({ $sms: mobile });
   }
 
+  /**
+   * Mobile number must be as per {@link https://www.twilio.com/docs/glossary/what-e164 E.164 standard}.
+   */
   async removeSms(mobile: string) {
     const isValid = this.validateMobile(mobile);
 
@@ -380,6 +408,9 @@ export default class User {
     return this.removeInternal({ $sms: mobile });
   }
 
+  /**
+   * Mobile number must be as per {@link https://www.twilio.com/docs/glossary/what-e164 E.164 standard}.
+   */
   async addWhatsapp(mobile: string) {
     const isValid = this.validateMobile(mobile);
 
@@ -395,6 +426,9 @@ export default class User {
     return this.appendInternal({ $whatsapp: mobile });
   }
 
+  /**
+   * Mobile number must be as per {@link https://www.twilio.com/docs/glossary/what-e164 E.164 standard}.
+   */
   async removeWhatsapp(mobile: string) {
     const isValid = this.validateMobile(mobile);
 

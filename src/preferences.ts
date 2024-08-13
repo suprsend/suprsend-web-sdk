@@ -62,6 +62,9 @@ export default class Preferences {
     return queryParamsString ? `${urlPath}/?${queryParamsString}` : urlPath;
   }
 
+  /**
+   * Used to get user's whole preferences data.
+   */
   async getPreferences(args?: { tenantId?: string }) {
     this.preferenceArgs = args;
     const queryParams = {
@@ -77,6 +80,9 @@ export default class Preferences {
     return response;
   }
 
+  /**
+   * Used to get user's preference of all categories.
+   */
   async getCategories(args?: {
     tenantId?: string;
     limit?: number;
@@ -93,6 +99,9 @@ export default class Preferences {
     return response;
   }
 
+  /**
+   * Used to get user's preference of specific category.
+   */
   async getCategory(category: string, args?: { tenantId?: string }) {
     if (!category) {
       return getResponsePayload({
@@ -109,6 +118,9 @@ export default class Preferences {
     return response;
   }
 
+  /**
+   * Used to get user's all channel level preference.
+   */
   async getOverallChannelPreferences() {
     const path = this.getUrlPath('channel_preference');
 
@@ -161,6 +173,9 @@ export default class Preferences {
     return response;
   }
 
+  /**
+   * Used to update user's category level preference.
+   */
   async updateCategoryPreference(
     category: string,
     preference: PreferenceOptions,
@@ -270,6 +285,9 @@ export default class Preferences {
     });
   }
 
+  /**
+   * Used to update user's category level channel preference.
+   */
   async updateChannelPreferenceInCategory(
     channel: string,
     preference: PreferenceOptions,
@@ -407,6 +425,9 @@ export default class Preferences {
     });
   }
 
+  /**
+   * Used to update user's channel level preference.
+   */
   async updateOverallChannelPreference(
     channel: string,
     preference: ChannelLevelPreferenceOptions

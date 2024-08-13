@@ -78,6 +78,12 @@ export default class WebPush {
     }
   }
 
+  /**
+   * Used to register push service. This method will
+   * 1. Ask for notification permission.
+   * 2. Resiter push service and generate webpush token.
+   * 3. Send webpush token to suprsend.
+   */
   async registerPush() {
     const pushSupported =
       windowSupport() &&
@@ -110,10 +116,16 @@ export default class WebPush {
     }
   }
 
+  /**
+   * Used to get browser level permission to show notifications.
+   */
   notificationPermission() {
     return Notification.permission;
   }
 
+  /**
+   * Used to check if push service is already active in browser.
+   */
   async pushSubscribed() {
     const subscription = await this.getPushSubscription();
     return !!subscription;
