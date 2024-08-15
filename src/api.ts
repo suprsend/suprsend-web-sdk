@@ -38,6 +38,8 @@ export default class ApiClient {
         return this.get(reqData.path);
       case 'post':
         return this.post(reqData.path, reqData?.payload || {});
+      case 'patch':
+        return this.patch(reqData.path, reqData?.payload || {});
       default:
         return this.get(reqData.path);
     }
@@ -47,7 +49,7 @@ export default class ApiClient {
     const url = this.getUrl(path);
 
     return fetch(url, {
-      method: 'get',
+      method: 'GET',
       headers: this.getHeaders(),
     });
   }
@@ -56,7 +58,17 @@ export default class ApiClient {
     const url = this.getUrl(path);
 
     return fetch(url, {
-      method: 'post',
+      method: 'POST',
+      body: JSON.stringify(payload),
+      headers: this.getHeaders(),
+    });
+  }
+
+  private patch(path: string, payload: Dictionary) {
+    const url = this.getUrl(path);
+
+    return fetch(url, {
+      method: 'PATCH',
       body: JSON.stringify(payload),
       headers: this.getHeaders(),
     });

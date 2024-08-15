@@ -86,7 +86,7 @@ export type EmitterEvents = {
 };
 
 export interface HandleRequest {
-  type: 'get' | 'post';
+  type: 'get' | 'post' | 'patch';
   path: string;
   payload?: Dictionary;
 }

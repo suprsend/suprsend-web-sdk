@@ -138,7 +138,7 @@ export default class Preferences {
 
     const response = await this.config
       .client()
-      .request({ type: 'post', path, payload: body });
+      .request({ type: 'patch', path, payload: body });
 
     if (response?.error) {
       this.config.emitter.emit('preferences_error', response);
@@ -158,7 +158,7 @@ export default class Preferences {
 
     const response = await this.config
       .client()
-      .request({ type: 'post', path, payload: body });
+      .request({ type: 'patch', path, payload: body });
 
     if (response?.error) {
       this.config.emitter.emit('preferences_error', response);

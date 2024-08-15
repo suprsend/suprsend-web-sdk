@@ -22,7 +22,7 @@ import WebPush from './webpush';
 import mitt, { Emitter } from 'mitt';
 import jwt_decode from 'jwt-decode';
 
-const DEFAULT_HOST = 'https://collector-staging.suprsend.workers.dev';
+const DEFAULT_HOST = 'https://hub.suprsend.com';
 const DEFAULT_SW_FILENAME = 'serviceworker.js';
 const AUTHENTICATED_DISTINCT_ID = 'ss_distinct_id';
 
