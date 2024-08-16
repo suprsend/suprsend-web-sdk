@@ -541,6 +541,10 @@ export default class User {
     return this.removeInternal({ $ms_teams: data });
   }
 
+  /**
+   * language passed should be 2-letter language code in {@link https://gist.github.com/jrnk/8eb57b065ea0b098d571 ISO 639-1 Alpha-2 format}.
+   * e.g. en (for English), es (for Spanish), fr (for French) etc.
+   */
   async setPreferredLanguage(language: string) {
     if (typeof language !== 'string') {
       return getResponsePayload({
@@ -553,6 +557,9 @@ export default class User {
     return this.setInternal({ $preferred_language: language });
   }
 
+  /**
+   * Timezone passed should be in {@link https://timeapi.io/documentation/iana-timezones IANA timezone format}.
+   */
   async setTimezone(timezone: string) {
     if (typeof timezone !== 'string') {
       return getResponsePayload({

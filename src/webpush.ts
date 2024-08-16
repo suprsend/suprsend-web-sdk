@@ -81,8 +81,8 @@ export default class WebPush {
   /**
    * Used to register push service. This method will
    * 1. Ask for notification permission.
-   * 2. Resiter push service and generate webpush token.
-   * 3. Send webpush token to suprsend.
+   * 2. Register push service and generate webpush token.
+   * 3. Send webpush token to SuprSend.
    */
   async registerPush() {
     const pushSupported =
