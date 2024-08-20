@@ -10,17 +10,17 @@ Checkout [documentation](https://docs.suprsend.com/) for this library.
 
 ```bash
 # using npm
-npm install @suprsend/web-sdk
+npm install @suprsend/web-sdk@beta
 
 # using yarn
-yarn add @suprsend/web-sdk
+yarn add @suprsend/web-sdk@beta
 ```
 
 ## Integration
 
 ### 1. Create Client
 
-Create suprsendClient instance and use same instance to access all the methods of SuprSend library.
+Create suprSendClient instance and use same instance to access all the methods of SuprSend library.
 
 ```typescript
 import SuprSend from '@suprsend/web-sdk';
@@ -30,7 +30,7 @@ export const suprSendClient = new SuprSend(publicApiKey: string);
 
 ### 2. Authenticate a user
 
-Authenticate user so that all the actions performed after authenticating will be w.r.t that user. This is mandatory step and need to be called before using any other method. This is usually performed after successful login and on reload of page to reauthenticate user (can be changed based on your requirement).
+Authenticate user so that all the actions performed after authenticating will be w.r.t that user. This is mandatory step and need to be called before using any other method. This is usually performed after successful login and on reload of page to re-authenticate user (can be changed based on your requirement).
 
 ```typescript
 const authResponse = await suprSendClient.identify(
@@ -56,9 +56,11 @@ Use these methods to manipulate user properties and notification channel data of
 await suprSendClient.user.addEmail(email: string)
 await suprSendClient.user.removeEmail(email: string)
 
+// mobile should be as per E.164 standard
 await suprSendClient.user.addSms(mobile: string)
 await suprSendClient.user.removeSms(mobile: string)
 
+// mobile should be as per E.164 standard
 await suprSendClient.user.addWhatsapp(mobile: string)
 await suprSendClient.user.removeWhatsapp(mobile: string)
 
@@ -147,7 +149,7 @@ const updatedPreferencesResp = await suprSendClient.user.preferences.updateChann
 const updatedPreferencesResp = await suprSendClient.user.preferences.updateOverallChannelPreference(channel: string, preference: 'all'|'required');
 ```
 
-All preferences update api's are optimistic updates. Actual api call will happen in background with 1 second debounce. Since its a background task SDK also privides event listener to get updated preference data based on api call status.
+All preferences update api's are optimistic updates. Actual api call will happen in background with 1 second debounce. Since its a background task SDK also provides event listener to get updated preference data based on api call status.
 
 ```typescript
 // listen for update in preferences data and update your UI accordingly in callback
