@@ -146,7 +146,7 @@ export class SuprSend {
     }
 
     // ignore more than one identify call
-    if (this.apiClient) {
+    if (this.distinctId && this.apiClient) {
       return getResponsePayload({ status: RESPONSE_STATUS.SUCCESS });
     }
 
