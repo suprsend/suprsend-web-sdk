@@ -4,7 +4,7 @@ This library is used to integrate SuprSend features like WebPush, Preferences in
 
 ## Documentation
 
-Checkout [documentation](https://docs.suprsend.com/) for this library.
+Checkout detailed [documentation](https://docs.suprsend.com/docs/new-javascript-sdk) for this library.
 
 ## Installation
 
@@ -28,6 +28,10 @@ import SuprSend from '@suprsend/web-sdk';
 export const suprSendClient = new SuprSend(publicApiKey: string);
 ```
 
+| Params         | Description                                                                                                                    |
+| :------------- | :----------------------------------------------------------------------------------------------------------------------------- |
+| publicApiKey\* | This is public Key used to authenticate api calls to SuprSend. Get it in SuprSend dashboard **ApiKeys -> Public Keys** section |
+
 ### 2. Authenticate a user
 
 Authenticate user so that all the actions performed after authenticating will be w.r.t that user. This is mandatory step and need to be called before using any other method. This is usually performed after successful login and on reload of page to re-authenticate user (can be changed based on your requirement).
@@ -39,6 +43,12 @@ const authResponse = await suprSendClient.identify(
   { refreshUserToken: (oldUserToken: string) => Promise<string> }
 );
 ```
+
+| Properties       | Description                                                                                                                                        |
+| :--------------- | :------------------------------------------------------------------------------------------------------------------------------------------------- |
+| distinctId\*     | Unique identifier to identify a user across platform.                                                                                              |
+| userToken        | Mandatory when enhanced security mode is on. This is ES256 JWT token generated in your server-side.                                                |
+| refreshUserToken | This function is called by SDK internally to get new userToken before existing token is expired. The returned string is used as the new userToken. |
 
 ### 3. Logout a user
 

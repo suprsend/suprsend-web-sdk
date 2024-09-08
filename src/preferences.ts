@@ -15,7 +15,7 @@ import { debounceByType, getResponsePayload } from './utils';
 export default class Preferences {
   private config: SuprSend;
   private preferenceData: PreferenceData;
-  private preferenceArgs?: { tenantId?: string };
+  private preferenceArgs?: { tenantId?: string; showOptOutChannels?: boolean };
   private debouncedUpdateCategoryPreferences;
   private debouncedUpdateChannelPreferences;
   private debounceTime = 1000;
@@ -65,10 +65,18 @@ export default class Preferences {
   /**
    * Used to get user's whole preferences data.
    */
-  async getPreferences(args?: { tenantId?: string }) {
-    this.preferenceArgs = args;
+  async getPreferences(args?: {
+    tenantId?: string;
+    showOptOutChannels?: boolean;
+  }) {
     const queryParams = {
       tenant_id: args?.tenantId,
+      show_opt_out_channels: args?.showOptOutChannels === false ? false : true,
+    };
+
+    this.preferenceArgs = {
+      tenantId: queryParams?.tenant_id,
+      showOptOutChannels: queryParams?.show_opt_out_channels,
     };
     const path = this.getUrlPath('full_preference', queryParams);
 
@@ -85,11 +93,13 @@ export default class Preferences {
    */
   async getCategories(args?: {
     tenantId?: string;
+    showOptOutChannels?: boolean;
     limit?: number;
     offset?: number;
   }) {
     const queryParams = {
       tenant_id: args?.tenantId,
+      show_opt_out_channels: args?.showOptOutChannels === false ? false : true,
       limit: args?.limit,
       offset: args?.offset,
     };
@@ -102,7 +112,10 @@ export default class Preferences {
   /**
    * Used to get user's preference of specific category.
    */
-  async getCategory(category: string, args?: { tenantId?: string }) {
+  async getCategory(
+    category: string,
+    args?: { tenantId?: string; showOptOutChannels?: boolean }
+  ) {
     if (!category) {
       return getResponsePayload({
         status: RESPONSE_STATUS.ERROR,
@@ -111,7 +124,10 @@ export default class Preferences {
       });
     }
 
-    const queryParams = { tenant_id: args?.tenantId };
+    const queryParams = {
+      tenant_id: args?.tenantId,
+      show_opt_out_channels: args?.showOptOutChannels === false ? false : true,
+    };
     const path = this.getUrlPath(`category/${category}`, queryParams);
 
     const response = await this.config.client().request({ type: 'get', path });
@@ -179,7 +195,7 @@ export default class Preferences {
   async updateCategoryPreference(
     category: string,
     preference: PreferenceOptions,
-    args?: { tenantId?: string }
+    args?: { tenantId?: string; showOptOutChannels?: boolean }
   ) {
     if (
       !category ||
@@ -266,9 +282,15 @@ export default class Preferences {
       }
     });
 
+    const showOptOutChannels =
+      args?.showOptOutChannels === false ? false : true;
+
     const requestPayload = {
       preference: categoryData.preference,
-      opt_out_channels: optOutChannels,
+      opt_out_channels:
+        showOptOutChannels && preference === PreferenceOptions.OPT_IN
+          ? null
+          : optOutChannels,
     };
 
     this.debouncedUpdateCategoryPreferences(
@@ -276,7 +298,7 @@ export default class Preferences {
       category,
       requestPayload,
       categoryData,
-      { tenant_id: args?.tenantId }
+      { tenant_id: args?.tenantId, show_opt_out_channels: showOptOutChannels }
     );
 
     return getResponsePayload({
@@ -292,7 +314,7 @@ export default class Preferences {
     channel: string,
     preference: PreferenceOptions,
     category: string,
-    args?: { tenantId?: string }
+    args?: { tenantId?: string; showOptOutChannels?: boolean }
   ) {
     if (!channel || !category) {
       return getResponsePayload({
@@ -406,8 +428,18 @@ export default class Preferences {
       }
     });
 
+    const showOptOutChannels =
+      args?.showOptOutChannels === false ? false : true;
+
+    const categoryPreference =
+      showOptOutChannels &&
+      categoryData.preference === PreferenceOptions.OPT_OUT &&
+      preference === PreferenceOptions.OPT_IN
+        ? PreferenceOptions.OPT_IN
+        : categoryData.preference;
+
     const requestPayload = {
-      preference: categoryData.preference,
+      preference: categoryPreference,
       opt_out_channels: optOutChannels,
     };
 
@@ -416,7 +448,7 @@ export default class Preferences {
       category,
       requestPayload,
       categoryData,
-      { tenant_id: args?.tenantId }
+      { tenant_id: args?.tenantId, show_opt_out_channels: showOptOutChannels }
     );
 
     return getResponsePayload({
