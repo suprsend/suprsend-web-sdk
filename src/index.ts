@@ -69,11 +69,17 @@ export class SuprSend {
       this.userTokenExpirationTimer = setTimeout(async () => {
         let newToken = '';
         try {
-          newToken = await refreshUserToken(this.userToken as string);
+          newToken = await refreshUserToken(
+            this.userToken as string,
+            jwtPayload
+          );
         } catch (e) {
           // retry fetching token
           try {
-            newToken = await refreshUserToken(this.userToken as string);
+            newToken = await refreshUserToken(
+              this.userToken as string,
+              jwtPayload
+            );
           } catch (e) {
             console.warn("[SuprSend]: Couldn't fetch new userToken", e);
           }
@@ -146,7 +152,7 @@ export class SuprSend {
     }
 
     // ignore more than one identify call
-    if (this.apiClient) {
+    if (this.distinctId && this.apiClient) {
       return getResponsePayload({ status: RESPONSE_STATUS.SUCCESS });
     }
 

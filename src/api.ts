@@ -96,7 +96,8 @@ export default class ApiClient {
         try {
           const newUserToken =
             await this.config.authenticateOptions.refreshUserToken(
-              this.config.userToken
+              this.config.userToken,
+              jwtPayload
             );
 
           if (newUserToken && typeof newUserToken === 'string') {
