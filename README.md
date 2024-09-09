@@ -10,10 +10,10 @@ Checkout detailed [documentation](https://docs.suprsend.com/docs/new-javascript-
 
 ```bash
 # using npm
-npm install @suprsend/web-sdk@beta
+npm install @suprsend/web-sdk@latest
 
 # using yarn
-yarn add @suprsend/web-sdk@beta
+yarn add @suprsend/web-sdk@latest
 ```
 
 ## Integration
@@ -40,7 +40,7 @@ Authenticate user so that all the actions performed after authenticating will be
 const authResponse = await suprSendClient.identify(
   distinctId: any,
   userToken?: string, // only needed in production environments for security
-  { refreshUserToken: (oldUserToken: string) => Promise<string> }
+  { refreshUserToken: (oldUserToken: string, tokenPayload: Dictionary) => Promise<string> }
 );
 ```
 
@@ -125,7 +125,7 @@ Create `serviceworker.js` file such that it should be publicly accessible from `
 
 ```javascript
 importScripts(
-  'https://cdn.jsdelivr.net/npm/@suprsend/web-sdk@2.0.0-beta.1/public/serviceworker.min.js'
+  'https://cdn.jsdelivr.net/npm/@suprsend/web-sdk@2.0.0/public/serviceworker.min.js'
 );
 
 initSuprSend(publicApiKey);
