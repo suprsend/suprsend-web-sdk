@@ -4,16 +4,16 @@ This library is used to integrate SuprSend features like WebPush, Preferences in
 
 ## Documentation
 
-Checkout [documentation](https://docs.suprsend.com/) for this library.
+Checkout detailed [documentation](https://docs.suprsend.com/docs/javascript-sdk) for this library.
 
 ## Installation
 
 ```bash
 # using npm
-npm install @suprsend/web-sdk@beta
+npm install @suprsend/web-sdk@latest
 
 # using yarn
-yarn add @suprsend/web-sdk@beta
+yarn add @suprsend/web-sdk@latest
 ```
 
 ## Integration
@@ -28,7 +28,11 @@ import SuprSend from '@suprsend/web-sdk';
 export const suprSendClient = new SuprSend(publicApiKey: string);
 ```
 
-### 2. Authenticate a user
+| Params         | Description                                                                                                                    |
+| :------------- | :----------------------------------------------------------------------------------------------------------------------------- |
+| publicApiKey\* | This is public Key used to authenticate api calls to SuprSend. Get it in SuprSend dashboard **ApiKeys -> Public Keys** section |
+
+### 2. Authenticate user
 
 Authenticate user so that all the actions performed after authenticating will be w.r.t that user. This is mandatory step and need to be called before using any other method. This is usually performed after successful login and on reload of page to re-authenticate user (can be changed based on your requirement).
 
@@ -36,11 +40,17 @@ Authenticate user so that all the actions performed after authenticating will be
 const authResponse = await suprSendClient.identify(
   distinctId: any,
   userToken?: string, // only needed in production environments for security
-  { refreshUserToken: (oldUserToken: string) => Promise<string> }
+  { refreshUserToken: (oldUserToken: string, tokenPayload: Dictionary) => Promise<string> }
 );
 ```
 
-### 3. Logout a user
+| Properties       | Description                                                                                                                                                                                                                               |
+| :--------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| distinctId\*     | Unique identifier to identify a user across platform.                                                                                                                                                                                     |
+| userToken        | Mandatory when enhanced security mode is on. This is ES256 JWT token generated in your server-side. Refer [docs](https://docs.suprsend.com/docs/client-authentication#enhanced-security-mode-with-signed-user-token) to create userToken. |
+| refreshUserToken | This function is called by SDK internally to get new userToken before existing token is expired. The returned string is used as the new userToken.                                                                                        |
+
+### 3. Reset user
 
 This will remove user data from SuprSend instance similar to logout action.
 
@@ -115,7 +125,7 @@ Create `serviceworker.js` file such that it should be publicly accessible from `
 
 ```javascript
 importScripts(
-  'https://cdn.jsdelivr.net/npm/@suprsend/web-sdk@2.0.0-beta.1/public/serviceworker.min.js'
+  'https://cdn.jsdelivr.net/npm/@suprsend/web-sdk@2.0.0/public/serviceworker.min.js'
 );
 
 initSuprSend(publicApiKey);

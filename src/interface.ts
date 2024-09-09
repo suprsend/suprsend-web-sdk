@@ -6,7 +6,10 @@ export interface SuprSendOptions {
   swFileName?: string;
 }
 
-export type RefreshTokenCallback = (oldUserToken: string) => Promise<string>;
+export type RefreshTokenCallback = (
+  oldUserToken: string,
+  tokenPayload: Dictionary
+) => Promise<string>;
 
 export interface AuthenticateOptions {
   refreshUserToken: RefreshTokenCallback;
