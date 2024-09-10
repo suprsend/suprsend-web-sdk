@@ -58,7 +58,7 @@ export class SuprSend {
     const jwtPayload = jwt_decode(this.userToken) as Dictionary;
     const expiresOn = ((jwtPayload.exp as number) || 0) * 1000; // in ms
     const now = Date.now(); // in ms
-    const refreshBefore = 1000 * 30; // call refresh api before 1min of expiry
+    const refreshBefore = 1000 * 30; // call refresh api before 30sec of expiry
 
     if (expiresOn && expiresOn > now) {
       const timeDiff = expiresOn - now - refreshBefore;
@@ -217,7 +217,7 @@ export class SuprSend {
         errorMessage: 'event name is missing',
       });
     }
-
+    // TODO: add check to validate special keys
     if (typeof properties === 'object') {
       propertiesObj = { ...propertiesObj, ...properties };
     }
