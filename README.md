@@ -6,7 +6,7 @@ This library is used to integrate SuprSend features like WebPush, Preferences in
 >
 > We have changed the web SDK authentication from workspace key-secret to public key and JWT based authentication. This is done to improve security in frontend applications.
 >
-> - Refer the v1 SDK [documentation](https://docs.suprsend.com/docs/v1.2.1/javascript-sdk)
+> - Refer the v1 SDK [documentation](https://docs.suprsend.com/v1.2.1/docs/javascript-sdk)
 > - For migrating to v2, follow this [guide](https://docs.suprsend.com/docs/js-migration-from-v1)
 
 ## Documentation
