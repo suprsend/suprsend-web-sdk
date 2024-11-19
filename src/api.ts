@@ -15,10 +15,6 @@ export default class ApiClient {
     this.config = config;
   }
 
-  private getUrl(path: string) {
-    return `${this.config.host}/${path}`;
-  }
-
   private getHeaders() {
     const headers = {
       'Content-Type': 'application/json',
@@ -35,28 +31,24 @@ export default class ApiClient {
   private requestApiInstance(reqData: HandleRequest) {
     switch (reqData.type) {
       case 'get':
-        return this.get(reqData.path);
+        return this.get(reqData.url);
       case 'post':
-        return this.post(reqData.path, reqData?.payload || {});
+        return this.post(reqData.url, reqData?.payload || {});
       case 'patch':
-        return this.patch(reqData.path, reqData?.payload || {});
+        return this.patch(reqData.url, reqData?.payload || {});
       default:
-        return this.get(reqData.path);
+        return this.get(reqData.url);
     }
   }
 
-  private get(path: string) {
-    const url = this.getUrl(path);
-
+  private get(url: string) {
     return fetch(url, {
       method: 'GET',
       headers: this.getHeaders(),
     });
   }
 
-  private post(path: string, payload: Dictionary) {
-    const url = this.getUrl(path);
-
+  private post(url: string, payload: Dictionary) {
     return fetch(url, {
       method: 'POST',
       body: JSON.stringify(payload),
@@ -64,9 +56,7 @@ export default class ApiClient {
     });
   }
 
-  private patch(path: string, payload: Dictionary) {
-    const url = this.getUrl(path);
-
+  private patch(url: string, payload: Dictionary) {
     return fetch(url, {
       method: 'PATCH',
       body: JSON.stringify(payload),

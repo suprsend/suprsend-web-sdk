@@ -51,8 +51,8 @@ export default class Preferences {
     return this.preferenceData;
   }
 
-  getUrlPath(path: string, qp?: Dictionary) {
-    const urlPath = `v2/subscriber/${this.config.distinctId}/${path}`;
+  getUrl(path: string, qp?: Dictionary) {
+    const urlPath = `${this.config.host}/v2/subscriber/${this.config.distinctId}/${path}`;
 
     const validatedQueryParams = this.validateQueryParams(qp);
     const queryParamsString = new URLSearchParams(
@@ -78,9 +78,9 @@ export default class Preferences {
       tenantId: queryParams?.tenant_id,
       showOptOutChannels: queryParams?.show_opt_out_channels,
     };
-    const path = this.getUrlPath('full_preference', queryParams);
+    const url = this.getUrl('full_preference', queryParams);
 
-    const response = await this.config.client().request({ type: 'get', path });
+    const response = await this.config.client().request({ type: 'get', url });
 
     if (!response.error) {
       this.data = response.body;
@@ -103,9 +103,9 @@ export default class Preferences {
       limit: args?.limit,
       offset: args?.offset,
     };
-    const path = this.getUrlPath('category', queryParams);
+    const url = this.getUrl('category', queryParams);
 
-    const response = await this.config.client().request({ type: 'get', path });
+    const response = await this.config.client().request({ type: 'get', url });
     return response;
   }
 
@@ -128,9 +128,9 @@ export default class Preferences {
       tenant_id: args?.tenantId,
       show_opt_out_channels: args?.showOptOutChannels === false ? false : true,
     };
-    const path = this.getUrlPath(`category/${category}`, queryParams);
+    const url = this.getUrl(`category/${category}`, queryParams);
 
-    const response = await this.config.client().request({ type: 'get', path });
+    const response = await this.config.client().request({ type: 'get', url });
     return response;
   }
 
@@ -138,9 +138,9 @@ export default class Preferences {
    * Used to get user's all channel level preference.
    */
   async getOverallChannelPreferences() {
-    const path = this.getUrlPath('channel_preference');
+    const url = this.getUrl('channel_preference');
 
-    const response = await this.config.client().request({ type: 'get', path });
+    const response = await this.config.client().request({ type: 'get', url });
     return response;
   }
 
@@ -150,11 +150,13 @@ export default class Preferences {
     subcategory: Category,
     args: Dictionary
   ) {
-    const path = this.getUrlPath(`category/${category}`, args);
+    const url = this.getUrl(`category/${category}`, args);
 
-    const response = await this.config
-      .client()
-      .request({ type: 'patch', path, payload: body });
+    const response = await this.config.client().request({
+      type: 'patch',
+      url,
+      payload: body,
+    });
 
     if (response?.error) {
       this.config.emitter.emit('preferences_error', response);
@@ -170,11 +172,13 @@ export default class Preferences {
   }
 
   private async _updateChannelPreferences(body: Dictionary) {
-    const path = this.getUrlPath('channel_preference');
+    const url = this.getUrl('channel_preference');
 
-    const response = await this.config
-      .client()
-      .request({ type: 'patch', path, payload: body });
+    const response = await this.config.client().request({
+      type: 'patch',
+      url,
+      payload: body,
+    });
 
     if (response?.error) {
       this.config.emitter.emit('preferences_error', response);

@@ -19,6 +19,7 @@ import {
 } from './utils';
 import User from './user';
 import WebPush from './webpush';
+import FeedsFactory from './feed';
 import mitt, { Emitter } from 'mitt';
 import jwt_decode from 'jwt-decode';
 
@@ -39,6 +40,7 @@ export class SuprSend {
 
   readonly user = new User(this);
   readonly webpush = new WebPush(this);
+  readonly feeds = new FeedsFactory(this);
   readonly emitter: Emitter<EmitterEvents> = mitt();
 
   constructor(publicApiKey: string, options?: SuprSendOptions) {
@@ -107,7 +109,11 @@ export class SuprSend {
   }
 
   eventApi(payload: Dictionary) {
-    return this.client().request({ path: 'v2/event', payload, type: 'post' });
+    return this.client().request({
+      url: `${this.host}/v2/event`,
+      payload,
+      type: 'post',
+    });
   }
 
   /**
@@ -248,6 +254,10 @@ export class SuprSend {
 
     if (this.userTokenExpirationTimer) {
       clearTimeout(this.userTokenExpirationTimer);
+    }
+
+    if (this.feeds.feedInstances?.length > 0) {
+      this.feeds.clearAll();
     }
     return getResponsePayload({ status: RESPONSE_STATUS.SUCCESS });
   }
