@@ -257,7 +257,7 @@ export class SuprSend {
     }
 
     if (this.feeds.feedInstances?.length > 0) {
-      this.feeds.clearAll();
+      this.feeds.removeAll();
     }
     return getResponsePayload({ status: RESPONSE_STATUS.SUCCESS });
   }
@@ -265,3 +265,4 @@ export class SuprSend {
 
 export default SuprSend;
 export * from './interface';
+export { Feed } from './feed';

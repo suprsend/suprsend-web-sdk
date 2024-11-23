@@ -63,15 +63,21 @@ export default class FeedsFactory {
     return feedClient;
   }
 
-  clearAll() {
+  removeInstance(feedClient: Feed) {
+    this.feedInstances = this.feedInstances.filter(
+      (instance) => instance !== feedClient
+    );
+  }
+
+  removeAll() {
     for (const feedInstance of this.feedInstances) {
-      feedInstance.clear();
+      feedInstance.remove();
     }
     this.feedInstances = [];
   }
 }
 
-class Feed {
+export class Feed {
   private config: SuprSend;
   private feedOptions: IFeedOptions;
   private store: StoreApi<INotificationStore>;
@@ -84,7 +90,6 @@ class Feed {
     this.feedOptions = { ...feedOptionsDefaults, ...options };
     this.validateOptions();
     this.store = this.createStore();
-    this.initializeSocketConnection();
   }
 
   private validateOptions() {
@@ -171,24 +176,6 @@ class Feed {
         store: this.feedOptions.stores?.[0] || DEFAULT_STORE,
       }; // TODO: check for mutability
     });
-  }
-
-  private initializeSocketConnection() {
-    this.socket = io(this.feedOptions.host?.socketHost, {
-      transports: ['websocket'],
-      auth: {
-        authorization: this.config.publicApiKey,
-        'x-ss-signature': this.config.userToken,
-        distinct_id: this.config.distinctId,
-        tenant_id: this.feedOptions.tenantId,
-        schema: '1',
-      },
-      reconnectionAttempts: 25,
-      reconnectionDelay: 5000,
-      reconnectionDelayMax: 10000,
-    });
-
-    this.initializeSocketEvents();
   }
 
   private initializeSocketEvents() {
@@ -533,6 +520,26 @@ class Feed {
     } as IFeedData;
   }
 
+  initializeSocketConnection() {
+    if (this.socket) return;
+
+    this.socket = io(this.feedOptions.host?.socketHost, {
+      transports: ['websocket'],
+      auth: {
+        authorization: this.config.publicApiKey,
+        'x-ss-signature': this.config.userToken,
+        distinct_id: this.config.distinctId,
+        tenant_id: this.feedOptions.tenantId,
+        schema: '1',
+      },
+      reconnectionAttempts: 25,
+      reconnectionDelay: 5000,
+      reconnectionDelayMax: 10000,
+    });
+
+    this.initializeSocketEvents();
+  }
+
   // TODO: support other stores and pages
   async fetch(options: IInboxFetchOptions = {}) {
     const storeData = this.store.getState();
@@ -575,6 +582,7 @@ class Feed {
 
     if (response.status === RESPONSE_STATUS.ERROR) {
       this.store.setState({ apiStatus: ApiResponseStatus.ERROR });
+      this.emitter.emit('feed.store_update', this.data);
       return response;
     }
 
@@ -848,7 +856,7 @@ class Feed {
     return await this.config.client().request({ type: 'patch', url });
   }
 
-  clear() {
+  reset() {
     this.store.setState({
       ...initialFeedStore,
       store: this.feedOptions.stores?.[0] || DEFAULT_STORE,
@@ -859,8 +867,12 @@ class Feed {
       clearInterval(this.expiryTimerId);
       this.expiryTimerId = undefined;
     }
+  }
 
-    this.socket?.disconnect();
+  remove() {
+    this.reset();
     this.emitter.off('*');
+    this.socket?.disconnect();
+    this.config.feeds.removeInstance(this);
   }
 }

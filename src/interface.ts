@@ -12,7 +12,7 @@ export type RefreshTokenCallback = (
 ) => Promise<string>;
 
 export interface AuthenticateOptions {
-  refreshUserToken: RefreshTokenCallback;
+  refreshUserToken?: RefreshTokenCallback;
 }
 
 export interface ResponseOptions {
