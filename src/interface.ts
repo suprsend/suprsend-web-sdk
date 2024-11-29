@@ -133,11 +133,10 @@ export interface IStore {
 
 export enum ApiResponseStatus {
   INITIAL = 'INITIAL', //  Before any request is made (or after a reset).
-  LOADING = 'LOADING', // The API call is in progress
+  LOADING = 'LOADING', // The initial API call is in progress
   SUCCESS = 'SUCCESS', // The API call was successful, and data has been received
   ERROR = 'ERROR', // The API call failed (network issue, server issue, etc.)
   FETCHING_MORE = 'FETCHING_MORE', //  The API call is fetching additional data (for pagination or infinite scroll)
-  EMPTY = 'EMPTY', // No data was returned, or the response was empty
 }
 
 export interface IActionObject {

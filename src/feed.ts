@@ -78,8 +78,8 @@ export default class FeedsFactory {
 }
 
 export class Feed {
+  feedOptions: IFeedOptions;
   private config: SuprSend;
-  private feedOptions: IFeedOptions;
   private store: StoreApi<INotificationStore>;
   private socket: Socket;
   private expiryTimerId?: ReturnType<typeof setInterval>;
@@ -257,34 +257,34 @@ export class Feed {
 
     const storeData = this.store.getState();
 
-    if (apiResponses[0].status === 'fulfilled') {
-      const response = apiResponses[0].value;
+    if (apiResponses[0].status !== 'fulfilled') return;
 
-      if (response.status === RESPONSE_STATUS.ERROR) return;
+    const response = apiResponses[0].value;
 
-      const newNotificationData: IRemoteNotification = response.body;
+    if (response.status === RESPONSE_STATUS.ERROR) return;
 
-      if (data?.action === 'archive') {
-        // if active tab has archived=true then we have to add the updated notification else remove from list
-        if (
-          storeData.store.query?.archived &&
-          this.notificationBelongToStore(newNotificationData, storeData.store)
-        ) {
-          this.store.setState({
-            notifications: this.orderNotificationsBasedOnPinFlag(
-              newNotificationData,
-              storeData.notifications
-            ),
-          });
-        } else {
-          this.store.setState({
-            notifications: storeData.notifications.filter(
-              (notification) => notification.n_id !== newNotificationData.n_id
-            ),
-          });
-        }
+    const newNotificationData: IRemoteNotification = response.body;
+
+    if (data?.action === 'archive') {
+      // if active tab has archived=true then we have to add the updated notification else remove from list
+      if (
+        storeData.store.query?.archived &&
+        this.notificationBelongToStore(newNotificationData, storeData.store)
+      ) {
+        this.store.setState({
+          notifications: this.orderNotificationsBasedOnPinFlag(
+            newNotificationData,
+            storeData.notifications
+          ),
+        });
+      } else {
+        this.store.setState({
+          notifications: storeData.notifications.filter(
+            (notification) => notification.n_id !== newNotificationData.n_id
+          ),
+        });
       }
-
+    } else {
       this.store.setState({
         notifications: storeData.notifications.map((notification) => {
           return notification.n_id === newNotificationData.n_id
@@ -427,20 +427,27 @@ export class Feed {
 
   private getUrl(path: string, qp?: Dictionary) {
     const urlPath = `${this.feedOptions.host?.apiHost}/v1/user/${this.config.distinctId}/inbox/${path}`;
-
     const validatedQueryParams = this.validateQueryParams(qp);
     const queryParamsString = new URLSearchParams(
       validatedQueryParams
     ).toString();
-
     return queryParamsString ? `${urlPath}?${queryParamsString}` : urlPath;
   }
 
   private validateQueryParams(queryParams: Dictionary = {}) {
     const validatedParams: Record<string, string> = {};
     for (const key in queryParams) {
-      if (queryParams[key]) {
-        validatedParams[key] = String(queryParams[key]);
+      const paramValue = queryParams[key];
+      if (
+        paramValue === undefined ||
+        paramValue === null ||
+        paramValue === ''
+      ) {
+        break;
+      } else if (typeof paramValue === 'object') {
+        validatedParams[key] = JSON.stringify(paramValue);
+      } else {
+        validatedParams[key] = String(paramValue);
       }
     }
     return validatedParams;
@@ -504,6 +511,7 @@ export class Feed {
     this.store.setState({
       ...initialFeedStore,
       store: selectedStore,
+      meta: storeData.meta,
     });
 
     return await this.fetch();
@@ -517,6 +525,7 @@ export class Feed {
       pageInfo: storeData.pageInfo,
       meta: storeData.meta,
       apiStatus: storeData.apiStatus,
+      store: storeData.store,
     } as IFeedData;
   }
 
@@ -568,13 +577,11 @@ export class Feed {
       page_size: pageSize,
       page_no: pageNo,
       before: firstFetchedTimeStamp,
+      store:
+        storeData.store.storeId !== DEFAULT_STORE.storeId
+          ? this.storeQueryParamObj(storeData.store)
+          : null,
     };
-
-    if (storeData.store.storeId !== DEFAULT_STORE.storeId) {
-      queryParams.store = encodeURIComponent(
-        JSON.stringify(this.storeQueryParamObj(storeData.store))
-      );
-    }
 
     const url = this.getUrl('notifications', queryParams);
 
@@ -628,13 +635,10 @@ export class Feed {
   async fetchCount() {
     const queryParams: Dictionary = {
       tenant_id: this.feedOptions.tenantId,
+      stores: this.feedOptions.stores
+        ? this.storesQueryParamObj(this.feedOptions.stores)
+        : null,
     };
-
-    if (this.feedOptions.stores) {
-      queryParams.stores = encodeURIComponent(
-        JSON.stringify(this.storesQueryParamObj(this.feedOptions.stores))
-      );
-    }
 
     const url = this.getUrl('notifications_count', queryParams);
 
@@ -721,7 +725,7 @@ export class Feed {
     this.store.setState({
       notifications: storeData.notifications.map((notification) => {
         if (notification.n_id === notificationId) {
-          if (!notification.read_on) {
+          if (notification.read_on) {
             notification.read_on = null;
           } else {
             alreadyUpdated = true;
