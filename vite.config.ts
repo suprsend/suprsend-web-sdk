@@ -1,6 +1,7 @@
 import { resolve } from 'path';
 import { defineConfig, loadEnv, LibraryFormats } from 'vite';
 import dts from 'vite-plugin-dts';
+import pkg from './package.json';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
@@ -19,6 +20,7 @@ export default defineConfig(({ mode }) => {
         formats,
       },
       rollupOptions: {
+        external: Object.keys(pkg.dependencies || {}),
         output: {
           exports: 'named',
         },

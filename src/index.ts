@@ -15,7 +15,7 @@ import {
   getResponsePayload,
   getLocalStorageData,
   setLocalStorageData,
-  removeLocalStorageData,
+  // removeLocalStorageData,
 } from './utils';
 import User from './user';
 import WebPush from './webpush';
@@ -250,7 +250,7 @@ export class SuprSend {
     this.apiClient = null;
     this.distinctId = null;
     this.userToken = '';
-    removeLocalStorageData(AUTHENTICATED_DISTINCT_ID);
+    // removeLocalStorageData(AUTHENTICATED_DISTINCT_ID);
 
     if (this.userTokenExpirationTimer) {
       clearTimeout(this.userTokenExpirationTimer);

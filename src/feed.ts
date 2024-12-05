@@ -174,7 +174,7 @@ export class Feed {
       return {
         ...initialFeedStore,
         store: this.feedOptions.stores?.[0] || DEFAULT_STORE,
-      }; // TODO: check for mutability
+      };
     });
   }
 
@@ -219,7 +219,6 @@ export class Feed {
 
     if (this.notificationBelongToStore(newNotificationData, storeData.store)) {
       emitNewNotificationEvent = true;
-      newMetaData.badge = storeData.meta.badge + 1;
       this.store.setState({
         notifications: this.orderNotificationsBasedOnPinFlag(
           newNotificationData,
@@ -228,14 +227,22 @@ export class Feed {
       });
     }
 
-    this.feedOptions.stores?.map((store) => {
+    this.feedOptions.stores?.map?.((store) => {
       if (this.notificationBelongToStore(newNotificationData, store)) {
         emitNewNotificationEvent = true;
         newMetaData[store.storeId] = (storeData.meta[store.storeId] || 0) + 1;
       }
     });
 
-    this.store.setState({ meta: newMetaData });
+    // update overall badge count as well if it belongs any of store current store
+    this.store.setState({
+      meta: {
+        ...newMetaData,
+        badge: emitNewNotificationEvent
+          ? newMetaData.badge + 1
+          : newMetaData.badge,
+      },
+    });
 
     if (emitNewNotificationEvent) {
       this.emitter.emit('feed.new_notification', newNotificationData);
@@ -265,12 +272,16 @@ export class Feed {
 
     const newNotificationData: IRemoteNotification = response.body;
 
-    if (data?.action === 'archive') {
-      // if active tab has archived=true then we have to add the updated notification else remove from list
-      if (
-        storeData.store.query?.archived &&
-        this.notificationBelongToStore(newNotificationData, storeData.store)
-      ) {
+    const notificationPresent = storeData.notifications?.some(
+      (notif) => notif.n_id === newNotificationData.n_id
+    );
+    const notificationBelongsToStore = this.notificationBelongToStore(
+      newNotificationData,
+      storeData.store
+    );
+
+    if (notificationBelongsToStore) {
+      if (!notificationPresent) {
         this.store.setState({
           notifications: this.orderNotificationsBasedOnPinFlag(
             newNotificationData,
@@ -279,18 +290,18 @@ export class Feed {
         });
       } else {
         this.store.setState({
-          notifications: storeData.notifications.filter(
-            (notification) => notification.n_id !== newNotificationData.n_id
-          ),
+          notifications: storeData.notifications.map((notification) => {
+            return notification.n_id === newNotificationData.n_id
+              ? newNotificationData
+              : notification;
+          }),
         });
       }
     } else {
       this.store.setState({
-        notifications: storeData.notifications.map((notification) => {
-          return notification.n_id === newNotificationData.n_id
-            ? newNotificationData
-            : notification;
-        }),
+        notifications: storeData.notifications.filter(
+          (notification) => notification.n_id !== newNotificationData.n_id
+        ),
       });
     }
 
@@ -336,8 +347,9 @@ export class Feed {
     const storeTags = store?.query?.tags;
     const storeCategories = store?.query?.categories;
 
-    const sameRead = !storeRead || notifRead === storeRead;
-    const sameArchived = !storeArchived || notifArchived === storeArchived;
+    const sameRead =
+      storeRead === undefined || storeRead === null || notifRead === storeRead;
+    const sameArchived = !!notifArchived === !!storeArchived;
     let sameTags = false;
     let sameCategory = false;
 
@@ -443,7 +455,7 @@ export class Feed {
         paramValue === null ||
         paramValue === ''
       ) {
-        break;
+        continue;
       } else if (typeof paramValue === 'object') {
         validatedParams[key] = JSON.stringify(paramValue);
       } else {
@@ -664,7 +676,6 @@ export class Feed {
     const storeData = this.store.getState();
     let alreadyUpdated = false;
 
-    // TODO: update badge count as well as store count
     this.store.setState({
       notifications: storeData.notifications.map((notification) => {
         if (notification.n_id === notificationId) {
@@ -692,7 +703,6 @@ export class Feed {
     const storeData = this.store.getState();
     let alreadyUpdated = false;
 
-    // TODO: update badge count as well as store count
     this.store.setState({
       notifications: storeData.notifications.map((notification) => {
         if (notification.n_id === notificationId) {
@@ -721,7 +731,6 @@ export class Feed {
     const storeData = this.store.getState();
     let alreadyUpdated = false;
 
-    // TODO: update badge count as well as store count
     this.store.setState({
       notifications: storeData.notifications.map((notification) => {
         if (notification.n_id === notificationId) {
@@ -745,25 +754,23 @@ export class Feed {
     return await this.config.client().request({ type: 'patch', url });
   }
 
+  // TODO: improve logic for already interacted cases
   async markAsInteracted(notificationId: string) {
     const storeData = this.store.getState();
-    let alreadyUpdated = false;
 
-    // TODO: update badge count as well as store count
     this.store.setState({
       notifications: storeData.notifications.map((notification) => {
         if (notification.n_id === notificationId) {
           if (!notification.interacted_on) {
             notification.interacted_on = Date.now();
-          } else {
-            alreadyUpdated = true;
+          }
+          if (!notification.read_on) {
+            notification.read_on = Date.now();
           }
         }
         return notification;
       }),
     });
-
-    if (alreadyUpdated) return { status: RESPONSE_STATUS.SUCCESS };
 
     const url = this.getUrl(`notifications/${notificationId}/interacted`, {
       tenant_id: this.feedOptions.tenantId,
@@ -777,7 +784,6 @@ export class Feed {
     const storeData = this.store.getState();
     let alreadyUpdated = false;
 
-    // TODO: update badge count as well as store count
     this.store.setState({
       notifications: storeData.notifications.filter((notification) => {
         if (notification.n_id === notificationId) {
@@ -802,7 +808,6 @@ export class Feed {
   async markBulkAsSeen(notificationIds: string[]) {
     const storeData = this.store.getState();
 
-    // TODO: update badge count as well as store count
     this.store.setState({
       notifications: storeData.notifications.map((notification) => {
         if (notificationIds.includes(notification.n_id)) {
