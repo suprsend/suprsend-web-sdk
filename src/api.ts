@@ -1,4 +1,5 @@
-import { SuprSend } from '.';
+import jwt_decode from 'jwt-decode';
+import SuprSend from './main';
 import {
   Dictionary,
   HandleRequest,
@@ -6,7 +7,6 @@ import {
   RESPONSE_STATUS,
 } from './interface';
 import { getResponsePayload } from './utils';
-import jwt_decode from 'jwt-decode';
 
 export default class ApiClient {
   private config: SuprSend;

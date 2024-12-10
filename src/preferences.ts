@@ -1,4 +1,4 @@
-import { SuprSend } from './index';
+import SuprSend from './main';
 import {
   Dictionary,
   PreferenceData,

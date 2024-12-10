@@ -1,7 +1,7 @@
-import { create, StoreApi } from 'zustand';
+import { createStore, StoreApi } from 'zustand/vanilla';
 import { io, Socket } from 'socket.io-client';
 import mitt, { Emitter } from 'mitt';
-import { SuprSend } from './index';
+import SuprSend from './main';
 import {
   IStore,
   ApiResponseStatus,
@@ -89,7 +89,7 @@ export class Feed {
     this.config = config;
     this.feedOptions = { ...feedOptionsDefaults, ...options };
     this.validateOptions();
-    this.store = this.createStore();
+    this.store = this.createFeedStore();
   }
 
   private validateOptions() {
@@ -169,8 +169,8 @@ export class Feed {
     this.feedOptions.stores = validatedStores;
   }
 
-  private createStore() {
-    return create<INotificationStore>()(() => {
+  private createFeedStore() {
+    return createStore<INotificationStore>()(() => {
       return {
         ...initialFeedStore,
         store: this.feedOptions.stores?.[0] || DEFAULT_STORE,

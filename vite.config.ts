@@ -21,9 +21,6 @@ export default defineConfig(({ mode }) => {
       },
       rollupOptions: {
         external: Object.keys(pkg.dependencies || {}),
-        output: {
-          exports: 'named',
-        },
       },
     },
     plugins: [
