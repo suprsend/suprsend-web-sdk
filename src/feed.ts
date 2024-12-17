@@ -438,7 +438,7 @@ export class Feed {
   }
 
   private getUrl(path: string, qp?: Dictionary) {
-    const urlPath = `${this.feedOptions.host?.apiHost}/v1/user/${this.config.distinctId}/inbox/${path}`;
+    const urlPath = `${this.feedOptions.host?.apiHost}/v1/feed/${path}`;
     const validatedQueryParams = this.validateQueryParams(qp);
     const queryParamsString = new URLSearchParams(
       validatedQueryParams
@@ -585,6 +585,7 @@ export class Feed {
     this.emitter.emit('feed.store_update', this.data);
 
     const queryParams: Dictionary = {
+      distinct_id: this.config.distinctId,
       tenant_id: this.feedOptions.tenantId,
       page_size: pageSize,
       page_no: pageNo,
@@ -646,6 +647,7 @@ export class Feed {
 
   async fetchCount() {
     const queryParams: Dictionary = {
+      distinct_id: this.config.distinctId,
       tenant_id: this.feedOptions.tenantId,
       stores: this.feedOptions.stores
         ? this.storesQueryParamObj(this.feedOptions.stores)
@@ -667,6 +669,7 @@ export class Feed {
   async fetchDetails(notificationId: string) {
     const url = this.getUrl(`notifications/${notificationId}`, {
       tenant_id: this.feedOptions.tenantId,
+      distinct_id: this.config.distinctId,
     });
 
     return await this.config.client().request({ type: 'get', url });
@@ -693,6 +696,7 @@ export class Feed {
 
     const url = this.getUrl(`notifications/${notificationId}/seen`, {
       tenant_id: this.feedOptions.tenantId,
+      distinct_id: this.config.distinctId,
     });
 
     this.emitter.emit('feed.store_update', this.data);
@@ -721,6 +725,7 @@ export class Feed {
 
     const url = this.getUrl(`notifications/${notificationId}/read`, {
       tenant_id: this.feedOptions.tenantId,
+      distinct_id: this.config.distinctId,
     });
 
     this.emitter.emit('feed.store_update', this.data);
@@ -748,6 +753,7 @@ export class Feed {
 
     const url = this.getUrl(`notifications/${notificationId}/unread`, {
       tenant_id: this.feedOptions.tenantId,
+      distinct_id: this.config.distinctId,
     });
 
     this.emitter.emit('feed.store_update', this.data);
@@ -774,6 +780,7 @@ export class Feed {
 
     const url = this.getUrl(`notifications/${notificationId}/interacted`, {
       tenant_id: this.feedOptions.tenantId,
+      distinct_id: this.config.distinctId,
     });
 
     this.emitter.emit('feed.store_update', this.data);
@@ -799,6 +806,7 @@ export class Feed {
 
     const url = this.getUrl(`notifications/${notificationId}/archive`, {
       tenant_id: this.feedOptions.tenantId,
+      distinct_id: this.config.distinctId,
     });
 
     this.emitter.emit('feed.store_update', this.data);
@@ -821,6 +829,7 @@ export class Feed {
 
     const url = this.getUrl(`bulk/notifications/seen`, {
       tenant_id: this.feedOptions.tenantId,
+      distinct_id: this.config.distinctId,
     });
 
     this.emitter.emit('feed.store_update', this.data);
@@ -839,6 +848,7 @@ export class Feed {
 
     const url = this.getUrl('reset_bell_count', {
       tenant_id: this.feedOptions.tenantId,
+      distinct_id: this.config.distinctId,
     });
 
     this.emitter.emit('feed.store_update', this.data);
@@ -859,6 +869,7 @@ export class Feed {
 
     const url = this.getUrl('mark_all_read', {
       tenant_id: this.feedOptions.tenantId,
+      distinct_id: this.config.distinctId,
     });
 
     this.emitter.emit('feed.store_update', this.data);
