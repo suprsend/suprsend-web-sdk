@@ -330,6 +330,17 @@ export class Feed {
       });
     }
 
+    if (data.action === 'seen' && Array.isArray(data.notification_ids)) {
+      this.store.setState({
+        notifications: storeData.notifications.map((notification) => {
+          if (data.notification_ids.includes(notification.n_id)) {
+            notification.seen_on = Date.now();
+          }
+          return notification;
+        }),
+      });
+    }
+
     this.emitter.emit('feed.store_update', this.data);
   }
 
