@@ -2,7 +2,7 @@
 
 This library is used to integrate SuprSend features like WebPush, Preferences in to your javascript client environments.
 
-> 📘 Migrating to v2 from v3
+> 📘 Migrating to v3 from v2
 >
 > - SuprSend class export has been changed from default export to named export.
 > - Added support for feed.
