@@ -2,7 +2,12 @@
 
 This library is used to integrate SuprSend features like WebPush, Preferences in to your javascript client environments.
 
-> 📘 This is v2 version of @suprsend/web-sdk
+> 📘 Migrating to v2 from v3
+>
+> - SuprSend class export has been changed from default export to named export.
+> - Added support for feed.
+
+> 📘 Migrating to v2 from v1
 >
 > We have changed the web SDK authentication from workspace key-secret to public key and JWT based authentication. This is done to improve security in frontend applications.
 >
@@ -30,7 +35,7 @@ yarn add @suprsend/web-sdk@latest
 Create suprSendClient instance and use same instance to access all the methods of SuprSend library.
 
 ```typescript
-import SuprSend from '@suprsend/web-sdk';
+import {SuprSend} from '@suprsend/web-sdk';
 
 export const suprSendClient = new SuprSend(publicApiKey: string);
 ```
@@ -175,6 +180,10 @@ suprSendClient.emitter.on('preferences_updated', (preferenceDataResp) => void);
 // listen for errors and show error state like toast etc
 suprSendClient.emitter.on('preferences_error', (errorResp) => void);
 ```
+
+## InApp Feed
+
+Documentation is yet to be added.
 
 ## Response Structure
 
