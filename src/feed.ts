@@ -87,23 +87,29 @@ export class Feed {
 
   constructor(config: SuprSend, options: IFeedOptions) {
     this.config = config;
-    this.feedOptions = { ...feedOptionsDefaults, ...options };
-    this.validateOptions();
+    this.setOptions(options);
     this.store = this.createFeedStore();
   }
 
-  private validateOptions() {
-    this.validateStore();
+  private setOptions(options: IFeedOptions) {
+    this.feedOptions = { ...feedOptionsDefaults };
 
-    if (
-      typeof this.feedOptions.pageSize === 'number' &&
-      this.feedOptions.pageSize > 0
-    ) {
-      this.feedOptions.pageSize = Math.min(
-        this.feedOptions.pageSize,
-        MAX_PAGE_SIZE
-      );
+    if (options?.tenantId) {
+      this.feedOptions.tenantId = options.tenantId;
     }
+
+    if (options?.host) {
+      this.feedOptions.host = options.host;
+    }
+
+    if (typeof options?.pageSize === 'number' && options.pageSize > 0) {
+      this.feedOptions.pageSize = Math.min(options.pageSize, MAX_PAGE_SIZE);
+    }
+
+    if (options?.stores) {
+      this.feedOptions.stores = options.stores;
+    }
+    this.validateStore();
   }
 
   private validateStore() {

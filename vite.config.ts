@@ -20,7 +20,7 @@ export default defineConfig(({ mode }) => {
         formats,
       },
       rollupOptions: {
-        external: Object.keys(pkg.dependencies || {}),
+        external: [...Object.keys(pkg.dependencies || {}), 'zustand/vanilla'],
       },
     },
     plugins: [
