@@ -230,6 +230,19 @@ feedClient.emitter.on('feed.store_update', (updatedStoreData: IFeedData) => {
 });
 ```
 
+#### Listening for new notification
+
+In case you want to show toast notification on receiving new notification you can use this listener
+
+```typescript
+feedClient.emitter.on(
+  'feed.new_notification',
+  (notificationData: IRemoteNotification) => {
+    // your logic to trigger toast with new notification data
+  }
+);
+```
+
 #### Removing Feed
 
 This will remove feed client data and abort socket connection. Additionally calling `suprSendClient.reset` method during logout will also remove all feedClient instances attached SuprSend client instance.
