@@ -268,7 +268,7 @@ await feedClient.markBulkAsSeen(notificationIds: string[])
 
 ## Response Structure
 
-Almost all methods of this library return `Promise<ApiResponse>`
+Most of the methods in this library return `Promise<ApiResponse>`
 
 ```typescript
 interface ApiResponse {
