@@ -1,6 +1,6 @@
 {
   "name": "@suprsend/web-sdk",
-  "version": "2.0.1",
+  "version": "3.0.1",
   "description": "The client side javascript library for interacting with SuprSend",
   "author": "SuprSend Developers",
   "type": "module",
@@ -53,6 +53,8 @@
   },
   "dependencies": {
     "jwt-decode": "3.1.2",
-    "mitt": "^3.0.1"
+    "mitt": "^3.0.1",
+    "socket.io-client": "^4.8.1",
+    "zustand": "^5.0.1"
   }
 }
