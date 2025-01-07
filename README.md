@@ -1,6 +1,6 @@
 # SuprSend Javascript Web SDK
 
-This library is used to integrate SuprSend features like WebPush, Preferences in to your javascript client environments.
+This library is used to integrate SuprSend features like WebPush, Preferences and InApp feed in to your javascript client environments.
 
 > 📘 Upgrading major version of SDK
 >
@@ -173,35 +173,6 @@ suprSendClient.emitter.on('preferences_updated', (preferenceDataResp) => void);
 suprSendClient.emitter.on('preferences_error', (errorResp) => void);
 ```
 
-## Response Structure
-
-Almost all methods of this library return `Promise<ApiResponse>`
-
-```typescript
-interface ApiResponse {
-  status: 'success' | 'error';
-  statusCode?: number;
-  error?: { type?: string; message?: string };
-  body?: any;
-}
-
-// success response
-{
-  status: "success",
-  body?: any,
-  statusCode?: number
-}
-
-// error response
-{
-  status: "error",
-  error: {
-    type: string,
-    message: string
-  }
-}
-```
-
 ## InApp Feed
 
 ### Initialise feed client
@@ -293,4 +264,33 @@ await feedClient.markAllAsRead()
 
 // bulk mark given notification id's as seen
 await feedClient.markBulkAsSeen(notificationIds: string[])
+```
+
+## Response Structure
+
+Almost all methods of this library return `Promise<ApiResponse>`
+
+```typescript
+interface ApiResponse {
+  status: 'success' | 'error';
+  statusCode?: number;
+  error?: { type?: string; message?: string };
+  body?: any;
+}
+
+// success response
+{
+  status: "success",
+  body?: any,
+  statusCode?: number
+}
+
+// error response
+{
+  status: "error",
+  error: {
+    type: string,
+    message: string
+  }
+}
 ```
