@@ -181,10 +181,6 @@ suprSendClient.emitter.on('preferences_updated', (preferenceDataResp) => void);
 suprSendClient.emitter.on('preferences_error', (errorResp) => void);
 ```
 
-## InApp Feed
-
-Documentation is yet to be added.
-
 ## Response Structure
 
 Almost all methods of this library return `Promise<ApiResponse>`
@@ -212,4 +208,97 @@ interface ApiResponse {
     message: string
   }
 }
+```
+
+## InApp Feed
+
+### Initialise feed client
+
+```typescript
+const feedClient: Feed = suprSendClient.feed.initialize(options?: IFeedOptions);
+
+interface IFeedOptions {
+  tenantId?: string;
+  pageSize?: number;
+  stores?: IStore[] | null;
+  host?: { socketHost?: string; apiHost?: string };
+}
+```
+
+### Feed Client
+
+#### Get Feed Data
+
+This returns notification store which contains list of notifications and other meta data like page information etc. You can call this anytime to get updated store data.
+
+```typescript
+const feedData: IFeedData = feedClient.data;
+```
+
+#### Initialize socket for realtime update
+
+```typescript
+feedClient.initializeSocketConnection();
+```
+
+#### Fetching notification data
+
+This method will get first page of notifications from SuprSend server and set data in notification store.
+
+```typescript
+feedClient.fetch();
+```
+
+#### Fetch more notifications
+
+This method will get next page of notifications from SuprSend server and set data in notification store.
+
+```typescript
+feedClient.fetchNextPage();
+```
+
+#### Listening for updates to store
+
+Whenever there is update in notification store (ex: on new notification or existing notification state updated) this event is fired by library. You can listen to this event and update your local state so that UI of you application is refreshed.
+
+```typescript
+feedClient.emitter.on('feed.store_update', (updatedStoreData: IFeedData) => {
+  // update your local state to refresh UI
+});
+```
+
+#### Removing Feed
+
+This will remove feed client data and abort socket connection. Additionally calling `suprSendClient.reset` method during logout will also remove all feedClient instances attached SuprSend client instance.
+
+```typescript
+feedClient.remove();
+```
+
+#### Other methods
+
+```typescript
+// If stores are used, this method will change active store
+feedClient.changeActiveStore(storeId: string)
+
+// mark notification as seen
+await feedClient.markAsSeen(notificationId: string)
+
+// mark notification as read
+await feedClient.markAsRead(notificationId: string)
+
+// mark notification as unread
+await feedClient.markAsUnread(notificationId: string)
+
+// mark notification as archived
+await feedClient.markAsArchived(notificationId: string)
+
+// mark notification as interacted
+await feedClient.markAsInteracted(notificationId: string)
+
+// bulk mark all notifications as read
+await feedClient.markAllAsRead()
+
+// bulk mark given notification id's as seen
+await feedClient.markBulkAsSeen(notificationIds: string[])
 ```
