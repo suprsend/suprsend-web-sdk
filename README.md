@@ -2,17 +2,9 @@
 
 This library is used to integrate SuprSend features like WebPush, Preferences in to your javascript client environments.
 
-> 📘 Migrating to v3 from v2
+> 📘 Upgrading major version of SDK
 >
-> - SuprSend class export has been changed from default export to named export.
-> - Added support for feed.
-
-> 📘 Migrating to v2 from v1
->
-> We have changed the web SDK authentication from workspace key-secret to public key and JWT based authentication. This is done to improve security in frontend applications.
->
-> - Refer the v1 SDK [documentation](https://docs.suprsend.com/v1.2.1/docs/javascript-sdk)
-> - For migrating to v2, follow this [guide](https://docs.suprsend.com/docs/js-migration-from-v1)
+> - Please refer [migration](https://docs.suprsend.com/docs/js-migration-from-v1) guide if you are migrating the major version of SDK.
 
 ## Documentation
 
