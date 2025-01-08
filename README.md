@@ -8,7 +8,8 @@ This library is used to integrate SuprSend features like WebPush, Preferences an
 
 ## Documentation
 
-Checkout detailed [documentation](https://docs.suprsend.com/docs/javascript-sdk) for this library.
+- Checkout detailed [documentation](https://docs.suprsend.com/docs/javascript-sdk) for this library.
+- Refer type definitions for this library [here](https://github.com/suprsend/suprsend-web-sdk/blob/main/src/interface.ts).
 
 ## Installation
 
