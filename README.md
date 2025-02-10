@@ -258,6 +258,10 @@ feedClient.remove();
 // If stores are used, this method will change active store
 feedClient.changeActiveStore(storeId: string)
 
+// Used to reset badge count which is shown on bell icon. This count is latest notifications that user received from the last he opened inbox popup.
+// call this on click of bell icon
+feedClient.resetBadgeCount()
+
 // mark notification as seen
 await feedClient.markAsSeen(notificationId: string)
 
