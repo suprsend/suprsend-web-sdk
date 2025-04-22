@@ -130,7 +130,7 @@ Create `serviceworker.js` file such that it should be publicly accessible from `
 
 ```javascript
 importScripts(
-  'https://cdn.jsdelivr.net/npm/@suprsend/web-sdk@2.0.0/public/serviceworker.min.js'
+  'https://cdn.jsdelivr.net/npm/@suprsend/web-sdk@3.0.3/public/serviceworker.min.js'
 );
 
 initSuprSend(publicApiKey);
