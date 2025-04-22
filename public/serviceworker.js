@@ -74,7 +74,7 @@ function callSSApi(body, method = 'post') {
 function initSuprSend(key, options) {
   suprsendConfig.publicApiKey = key;
 
-  if (options.host) {
+  if (options && options.host) {
     suprsendConfig.host = options.host;
   }
 }
