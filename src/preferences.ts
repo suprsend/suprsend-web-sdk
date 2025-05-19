@@ -303,8 +303,12 @@ export default class Preferences {
       }
     });
 
-    const showOptOutChannels =
-      args?.showOptOutChannels === false ? false : true;
+    let showOptOutChannels = true;
+    if (typeof args?.showOptOutChannels === 'boolean') {
+      showOptOutChannels = args?.showOptOutChannels;
+    } else if (typeof this.preferenceArgs?.showOptOutChannels === 'boolean') {
+      showOptOutChannels = this.preferenceArgs.showOptOutChannels;
+    }
 
     const requestPayload = {
       preference: categoryData.preference,
@@ -320,7 +324,7 @@ export default class Preferences {
       requestPayload,
       categoryData,
       {
-        tenant_id: args?.tenantId,
+        tenant_id: args?.tenantId || this.preferenceArgs?.tenantId,
         show_opt_out_channels: showOptOutChannels,
         tags: args?.tags || this.preferenceArgs?.tags,
       }
@@ -457,8 +461,12 @@ export default class Preferences {
       }
     });
 
-    const showOptOutChannels =
-      args?.showOptOutChannels === false ? false : true;
+    let showOptOutChannels = true;
+    if (typeof args?.showOptOutChannels === 'boolean') {
+      showOptOutChannels = args?.showOptOutChannels;
+    } else if (typeof this.preferenceArgs?.showOptOutChannels === 'boolean') {
+      showOptOutChannels = this.preferenceArgs.showOptOutChannels;
+    }
 
     const categoryPreference =
       showOptOutChannels &&
@@ -478,7 +486,7 @@ export default class Preferences {
       requestPayload,
       categoryData,
       {
-        tenant_id: args?.tenantId,
+        tenant_id: args?.tenantId || this.preferenceArgs?.tenantId,
         show_opt_out_channels: showOptOutChannels,
         tags: args?.tags || this.preferenceArgs?.tags,
       }
