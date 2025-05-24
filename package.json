@@ -1,6 +1,6 @@
 {
   "name": "@suprsend/web-sdk",
-  "version": "3.0.3",
+  "version": "3.1.0",
   "description": "The client side javascript library for interacting with SuprSend",
   "author": "SuprSend Developers",
   "type": "module",

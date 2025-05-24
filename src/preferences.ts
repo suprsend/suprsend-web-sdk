@@ -15,7 +15,11 @@ import { debounceByType, getResponsePayload } from './utils';
 export default class Preferences {
   private config: SuprSend;
   private preferenceData: PreferenceData;
-  private preferenceArgs?: { tenantId?: string; showOptOutChannels?: boolean };
+  private preferenceArgs?: {
+    tenantId?: string;
+    showOptOutChannels?: boolean;
+    tags?: string | Dictionary;
+  };
   private debouncedUpdateCategoryPreferences;
   private debouncedUpdateChannelPreferences;
   private debounceTime = 1000;
@@ -37,7 +41,11 @@ export default class Preferences {
     const validatedParams: Record<string, string> = {};
     for (const key in queryParams) {
       if (queryParams[key]) {
-        validatedParams[key] = String(queryParams[key]);
+        if (typeof queryParams[key] === 'object') {
+          validatedParams[key] = JSON.stringify(queryParams[key]);
+        } else {
+          validatedParams[key] = String(queryParams[key]);
+        }
       }
     }
     return validatedParams;
@@ -68,15 +76,18 @@ export default class Preferences {
   async getPreferences(args?: {
     tenantId?: string;
     showOptOutChannels?: boolean;
+    tags?: string | Dictionary;
   }) {
     const queryParams = {
       tenant_id: args?.tenantId,
       show_opt_out_channels: args?.showOptOutChannels === false ? false : true,
+      tags: args?.tags,
     };
 
     this.preferenceArgs = {
       tenantId: queryParams?.tenant_id,
       showOptOutChannels: queryParams?.show_opt_out_channels,
+      tags: queryParams?.tags,
     };
     const url = this.getUrl('full_preference', queryParams);
 
@@ -94,6 +105,7 @@ export default class Preferences {
   async getCategories(args?: {
     tenantId?: string;
     showOptOutChannels?: boolean;
+    tags?: string | Dictionary;
     limit?: number;
     offset?: number;
   }) {
@@ -102,6 +114,7 @@ export default class Preferences {
       show_opt_out_channels: args?.showOptOutChannels === false ? false : true,
       limit: args?.limit,
       offset: args?.offset,
+      tags: args?.tags,
     };
     const url = this.getUrl('category', queryParams);
 
@@ -199,7 +212,11 @@ export default class Preferences {
   async updateCategoryPreference(
     category: string,
     preference: PreferenceOptions,
-    args?: { tenantId?: string; showOptOutChannels?: boolean }
+    args?: {
+      tenantId?: string;
+      showOptOutChannels?: boolean;
+      tags?: string | Dictionary;
+    }
   ) {
     if (
       !category ||
@@ -286,8 +303,12 @@ export default class Preferences {
       }
     });
 
-    const showOptOutChannels =
-      args?.showOptOutChannels === false ? false : true;
+    let showOptOutChannels = true;
+    if (typeof args?.showOptOutChannels === 'boolean') {
+      showOptOutChannels = args?.showOptOutChannels;
+    } else if (typeof this.preferenceArgs?.showOptOutChannels === 'boolean') {
+      showOptOutChannels = this.preferenceArgs.showOptOutChannels;
+    }
 
     const requestPayload = {
       preference: categoryData.preference,
@@ -302,7 +323,11 @@ export default class Preferences {
       category,
       requestPayload,
       categoryData,
-      { tenant_id: args?.tenantId, show_opt_out_channels: showOptOutChannels }
+      {
+        tenant_id: args?.tenantId || this.preferenceArgs?.tenantId,
+        show_opt_out_channels: showOptOutChannels,
+        tags: args?.tags || this.preferenceArgs?.tags,
+      }
     );
 
     return getResponsePayload({
@@ -318,7 +343,11 @@ export default class Preferences {
     channel: string,
     preference: PreferenceOptions,
     category: string,
-    args?: { tenantId?: string; showOptOutChannels?: boolean }
+    args?: {
+      tenantId?: string;
+      showOptOutChannels?: boolean;
+      tags?: string | Dictionary;
+    }
   ) {
     if (!channel || !category) {
       return getResponsePayload({
@@ -432,8 +461,12 @@ export default class Preferences {
       }
     });
 
-    const showOptOutChannels =
-      args?.showOptOutChannels === false ? false : true;
+    let showOptOutChannels = true;
+    if (typeof args?.showOptOutChannels === 'boolean') {
+      showOptOutChannels = args?.showOptOutChannels;
+    } else if (typeof this.preferenceArgs?.showOptOutChannels === 'boolean') {
+      showOptOutChannels = this.preferenceArgs.showOptOutChannels;
+    }
 
     const categoryPreference =
       showOptOutChannels &&
@@ -452,7 +485,11 @@ export default class Preferences {
       category,
       requestPayload,
       categoryData,
-      { tenant_id: args?.tenantId, show_opt_out_channels: showOptOutChannels }
+      {
+        tenant_id: args?.tenantId || this.preferenceArgs?.tenantId,
+        show_opt_out_channels: showOptOutChannels,
+        tags: args?.tags || this.preferenceArgs?.tags,
+      }
     );
 
     return getResponsePayload({
