@@ -152,13 +152,13 @@ const response = await suprSendClient.webpush.registerPush();
 
 ```typescript
 // get full user preferences data
-const preferencesResp = await suprSendClient.user.preferences.getPreferences(args?: {tenantId?: string});
+const preferencesResp = await suprSendClient.user.preferences.getPreferences(args?: {tenantId?: string, tags?: string | Dictionary });
 
 // update category level preference
-const updatedPreferencesResp = await suprSendClient.user.preferences.updateCategoryPreference(category: string, preference: 'opt_in'|'opt_out', args?: { tenantId?: string });
+const updatedPreferencesResp = await suprSendClient.user.preferences.updateCategoryPreference(category: string, preference: 'opt_in'|'opt_out');
 
 // update category level channel preference
-const updatedPreferencesResp = await suprSendClient.user.preferences.updateChannelPreferenceInCategory(channel: string, preference: 'opt_in'|'opt_out', category: string, args?: { tenantId?: string });
+const updatedPreferencesResp = await suprSendClient.user.preferences.updateChannelPreferenceInCategory(channel: string, preference: 'opt_in'|'opt_out', category: string);
 
 // update overall channel level preference
 const updatedPreferencesResp = await suprSendClient.user.preferences.updateOverallChannelPreference(channel: string, preference: 'all'|'required');
