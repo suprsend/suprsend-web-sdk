@@ -40,13 +40,12 @@ const initialFeedStore: INotificationStore = {
   store: DEFAULT_STORE,
   pageInfo: {
     total: 0,
-    currentPage: 0,
-    totalPages: 0,
     pageSize: DEFAULT_PAGE_SIZE,
+    hasMore: false,
   },
   meta: { badge: 0 },
   apiStatus: ApiResponseStatus.INITIAL,
-  _firstFetchedTimeStamp: null,
+  isFirstFetch: true,
 };
 
 export default class FeedsFactory {
@@ -584,12 +583,9 @@ export class Feed {
 
     if (this.requestInprogress()) return;
 
-    const pageNo = options?.page || 1;
     const pageSize = options?.pageSize || this.feedOptions.pageSize;
-    const firstFetchedTimeStamp =
-      storeData._firstFetchedTimeStamp || Date.now();
 
-    if (pageNo > 1) {
+    if (!storeData.isFirstFetch) {
       this.store.setState({
         apiStatus: ApiResponseStatus.FETCHING_MORE,
       });
@@ -605,13 +601,22 @@ export class Feed {
       distinct_id: this.config.distinctId,
       tenant_id: this.feedOptions.tenantId,
       page_size: pageSize,
-      page_no: pageNo,
-      before: firstFetchedTimeStamp,
       store:
         storeData.store.storeId !== DEFAULT_STORE.storeId
           ? this.storeQueryParamObj(storeData.store)
           : null,
     };
+
+    if (storeData.notifications.length > 0) {
+      const lastNotification =
+        storeData.notifications[storeData.notifications.length - 1];
+      queryParams.search_after = [
+        lastNotification.is_pinned,
+        lastNotification.created_on,
+      ];
+    } else {
+      queryParams.search_after = [];
+    }
 
     const url = this.getUrl('notifications', queryParams);
 
@@ -623,20 +628,17 @@ export class Feed {
       return response;
     }
 
-    const isFirstFetch = response.body.meta.current_page === 1;
-
     this.store.setState({
       apiStatus: ApiResponseStatus.SUCCESS,
-      notifications: isFirstFetch
+      notifications: storeData.isFirstFetch
         ? response.body.results
         : [...storeData.notifications, ...response.body.results],
       pageInfo: {
         ...storeData.pageInfo,
         total: response.body.meta.total_count,
-        currentPage: response.body.meta.current_page,
-        totalPages: response.body.meta.total_pages,
+        hasMore: response.body.meta.has_more,
       },
-      _firstFetchedTimeStamp: firstFetchedTimeStamp,
+      isFirstFetch: false,
     });
     this.emitter.emit('feed.store_update', this.data);
 
@@ -649,7 +651,7 @@ export class Feed {
   async fetchNextPage() {
     const storeData = this.store.getState();
 
-    if (storeData.pageInfo.currentPage >= storeData.pageInfo.totalPages) {
+    if (storeData.pageInfo.hasMore === false) {
       return {
         status: RESPONSE_STATUS.ERROR,
         error: {
@@ -659,7 +661,7 @@ export class Feed {
       } as ApiResponse;
     }
 
-    return this.fetch({ page: storeData.pageInfo.currentPage + 1 });
+    return this.fetch();
   }
 
   async fetchCount() {
