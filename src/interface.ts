@@ -195,13 +195,12 @@ export interface INotificationStore {
   store: IStore;
   pageInfo: {
     total: number;
-    currentPage: number;
-    totalPages: number;
+    hasMore: boolean;
     pageSize: number;
   };
   meta: Record<string, number>;
   apiStatus: ApiResponseStatus;
-  _firstFetchedTimeStamp: number | null;
+  isFirstFetch: boolean;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
@@ -209,7 +208,5 @@ export interface IFeedData
   extends Omit<INotificationStore, '_firstFetchedTimeStamp'> {}
 
 export interface IInboxFetchOptions {
-  page?: number;
   pageSize?: number;
-  storeId?: IStore;
 }
