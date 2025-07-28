@@ -9,7 +9,7 @@ import {
 } from './utils';
 import { ERROR_TYPE, RESPONSE_STATUS } from './interface';
 
-const SUPRSEND_ENDPOINT_KEY = 'ss_wp_hash';
+export const SUPRSEND_ENDPOINT_KEY = 'ss_wp_hash';
 
 export default class WebPush {
   private config: SuprSend;
