@@ -1,6 +1,15 @@
 import { SuprSend } from './index';
-import { urlB64ToUint8Array, getResponsePayload, windowSupport } from './utils';
+import {
+  urlB64ToUint8Array,
+  getResponsePayload,
+  windowSupport,
+  sha256Hash,
+  getLocalStorageData,
+  setLocalStorageData,
+} from './utils';
 import { ERROR_TYPE, RESPONSE_STATUS } from './interface';
+
+export const SUPRSEND_ENDPOINT_KEY = 'ss_wp_hash';
 
 export default class WebPush {
   private config: SuprSend;
@@ -18,6 +27,23 @@ export default class WebPush {
     const subscription = registration.pushManager.getSubscription();
     if (!subscription) return;
     return subscription;
+  }
+
+  private async checkAndUpdateOnServer(subscription: PushSubscription) {
+    const endpoint = subscription.endpoint;
+    let hash: string | null = null;
+    try {
+      hash = await sha256Hash(endpoint);
+    } catch (e) {
+      // pass
+    }
+    if (hash) {
+      if (hash === getLocalStorageData(SUPRSEND_ENDPOINT_KEY)) {
+        return getResponsePayload({ status: RESPONSE_STATUS.SUCCESS });
+      }
+      setLocalStorageData(SUPRSEND_ENDPOINT_KEY, hash);
+    }
+    return await this.config.user.addWebPush(subscription);
   }
 
   private async handleRegisterPush() {
@@ -43,7 +69,7 @@ export default class WebPush {
       const pushSubscriptionObj =
         await readyRegistration.pushManager.getSubscription();
       if (pushSubscriptionObj) {
-        return this.config.user.addWebPush(pushSubscriptionObj);
+        return this.checkAndUpdateOnServer(pushSubscriptionObj);
       }
 
       if (!this.config.vapidKey) {
@@ -65,7 +91,7 @@ export default class WebPush {
       });
 
       // send push token object to suprsend
-      return this.config.user.addWebPush(subscription);
+      return this.checkAndUpdateOnServer(subscription);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (e: any) {
       console.warn('SuprSend: Error getting push subscription', e);
@@ -105,7 +131,7 @@ export default class WebPush {
   async updatePushSubscription() {
     const subscription = await this.getPushSubscription();
     if (subscription) {
-      return this.config.user.addWebPush(subscription);
+      return this.checkAndUpdateOnServer(subscription);
     }
   }
 

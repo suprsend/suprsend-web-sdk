@@ -17,10 +17,10 @@ import {
   getResponsePayload,
   getLocalStorageData,
   setLocalStorageData,
-  // removeLocalStorageData,
+  removeLocalStorageData,
 } from './utils';
 import User from './user';
-import WebPush from './webpush';
+import WebPush, { SUPRSEND_ENDPOINT_KEY } from './webpush';
 import FeedsFactory from './feed';
 
 const DEFAULT_HOST = 'https://hub.suprsend.com';
@@ -245,6 +245,7 @@ export default class SuprSend {
 
     if (unsubscribePush) {
       await this.webpush?.removePushSubscription();
+      removeLocalStorageData(SUPRSEND_ENDPOINT_KEY);
     }
 
     this.apiClient = null;
