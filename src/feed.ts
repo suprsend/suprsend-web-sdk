@@ -569,8 +569,7 @@ export class Feed {
         tenant_id: this.feedOptions.tenantId,
         schema: '1',
       },
-      reconnectionAttempts: 25,
-      reconnectionDelay: 5000,
+      reconnectionDelay: 1000,
       reconnectionDelayMax: 10000,
     });
 
