@@ -191,7 +191,8 @@ export class Feed {
         this.config.authenticateOptions?.refreshUserToken &&
         this.config.userToken
       ) {
-        const jwtPayload = jwt_decode(this.config.userToken) as Dictionary;
+        const userToken = this.socket.auth['x-ss-signature'];
+        const jwtPayload = jwt_decode(userToken) as Dictionary;
         const expiresOn = ((jwtPayload.exp as number) || 0) * 1000; // in ms
         const now = Date.now(); // in ms
         const hasExpired = expiresOn <= now;
@@ -202,7 +203,6 @@ export class Feed {
                 this.config.userToken,
                 jwtPayload
               );
-
             if (newUserToken && typeof newUserToken === 'string') {
               await this.config.identify(
                 this.config.distinctId,
