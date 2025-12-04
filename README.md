@@ -152,7 +152,7 @@ const response = await suprSendClient.webpush.registerPush();
 
 ```typescript
 // get full user preferences data
-const preferencesResp = await suprSendClient.user.preferences.getPreferences(args?: {tenantId?: string, tags?: string | Dictionary });
+const preferencesResp = await suprSendClient.user.preferences.getPreferences(args?: {tenantId?: string, tags?: string | Dictionary, locale?: string });
 
 // update category level preference
 const updatedPreferencesResp = await suprSendClient.user.preferences.updateCategoryPreference(category: string, preference: 'opt_in'|'opt_out');
