@@ -9,17 +9,14 @@ import {
   ChannelPreference,
   ERROR_TYPE,
   RESPONSE_STATUS,
+  IPreferenceConfig,
 } from './interface';
 import { debounceByType, getResponsePayload } from './utils';
 
 export default class Preferences {
   private config: SuprSend;
   private preferenceData: PreferenceData;
-  private preferenceArgs?: {
-    tenantId?: string;
-    showOptOutChannels?: boolean;
-    tags?: string | Dictionary;
-  };
+  private preferenceArgs?: IPreferenceConfig;
   private debouncedUpdateCategoryPreferences;
   private debouncedUpdateChannelPreferences;
   private debounceTime = 1000;
@@ -73,21 +70,19 @@ export default class Preferences {
   /**
    * Used to get user's whole preferences data.
    */
-  async getPreferences(args?: {
-    tenantId?: string;
-    showOptOutChannels?: boolean;
-    tags?: string | Dictionary;
-  }) {
+  async getPreferences(args?: IPreferenceConfig) {
     const queryParams = {
       tenant_id: args?.tenantId,
       show_opt_out_channels: args?.showOptOutChannels === false ? false : true,
       tags: args?.tags,
+      locale: args?.locale,
     };
 
     this.preferenceArgs = {
       tenantId: queryParams?.tenant_id,
       showOptOutChannels: queryParams?.show_opt_out_channels,
       tags: queryParams?.tags,
+      locale: queryParams?.locale,
     };
     const url = this.getUrl('full_preference', queryParams);
 
@@ -106,6 +101,7 @@ export default class Preferences {
     tenantId?: string;
     showOptOutChannels?: boolean;
     tags?: string | Dictionary;
+    locale?: string;
     limit?: number;
     offset?: number;
   }) {
@@ -115,6 +111,7 @@ export default class Preferences {
       limit: args?.limit,
       offset: args?.offset,
       tags: args?.tags,
+      locale: args?.locale,
     };
     const url = this.getUrl('category', queryParams);
 
@@ -127,7 +124,7 @@ export default class Preferences {
    */
   async getCategory(
     category: string,
-    args?: { tenantId?: string; showOptOutChannels?: boolean }
+    args?: { tenantId?: string; showOptOutChannels?: boolean; locale?: string }
   ) {
     if (!category) {
       return getResponsePayload({
@@ -140,6 +137,7 @@ export default class Preferences {
     const queryParams = {
       tenant_id: args?.tenantId,
       show_opt_out_channels: args?.showOptOutChannels === false ? false : true,
+      locale: args?.locale,
     };
     const url = this.getUrl(`category/${category}`, queryParams);
 
@@ -212,11 +210,7 @@ export default class Preferences {
   async updateCategoryPreference(
     category: string,
     preference: PreferenceOptions,
-    args?: {
-      tenantId?: string;
-      showOptOutChannels?: boolean;
-      tags?: string | Dictionary;
-    }
+    args?: IPreferenceConfig
   ) {
     if (
       !category ||
@@ -327,6 +321,7 @@ export default class Preferences {
         tenant_id: args?.tenantId || this.preferenceArgs?.tenantId,
         show_opt_out_channels: showOptOutChannels,
         tags: args?.tags || this.preferenceArgs?.tags,
+        locale: args?.locale || this.preferenceArgs?.locale,
       }
     );
 
@@ -343,11 +338,7 @@ export default class Preferences {
     channel: string,
     preference: PreferenceOptions,
     category: string,
-    args?: {
-      tenantId?: string;
-      showOptOutChannels?: boolean;
-      tags?: string | Dictionary;
-    }
+    args?: IPreferenceConfig
   ) {
     if (!channel || !category) {
       return getResponsePayload({
@@ -489,6 +480,7 @@ export default class Preferences {
         tenant_id: args?.tenantId || this.preferenceArgs?.tenantId,
         show_opt_out_channels: showOptOutChannels,
         tags: args?.tags || this.preferenceArgs?.tags,
+        locale: args?.locale || this.preferenceArgs?.locale,
       }
     );
 
