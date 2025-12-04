@@ -9,15 +9,9 @@ import {
   ChannelPreference,
   ERROR_TYPE,
   RESPONSE_STATUS,
+  IPreferenceConfig,
 } from './interface';
 import { debounceByType, getResponsePayload } from './utils';
-
-interface IPreferenceConfig {
-  tenantId?: string;
-  showOptOutChannels?: boolean;
-  tags?: string | Dictionary;
-  locale?: string;
-}
 
 export default class Preferences {
   private config: SuprSend;
@@ -76,12 +70,7 @@ export default class Preferences {
   /**
    * Used to get user's whole preferences data.
    */
-  async getPreferences(args?: {
-    tenantId?: string;
-    showOptOutChannels?: boolean;
-    tags?: string | Dictionary;
-    locale?: string;
-  }) {
+  async getPreferences(args?: IPreferenceConfig) {
     const queryParams = {
       tenant_id: args?.tenantId,
       show_opt_out_channels: args?.showOptOutChannels === false ? false : true,
@@ -221,12 +210,7 @@ export default class Preferences {
   async updateCategoryPreference(
     category: string,
     preference: PreferenceOptions,
-    args?: {
-      tenantId?: string;
-      showOptOutChannels?: boolean;
-      tags?: string | Dictionary;
-      locale?: string;
-    }
+    args?: IPreferenceConfig
   ) {
     if (
       !category ||
@@ -354,12 +338,7 @@ export default class Preferences {
     channel: string,
     preference: PreferenceOptions,
     category: string,
-    args?: {
-      tenantId?: string;
-      showOptOutChannels?: boolean;
-      tags?: string | Dictionary;
-      locale?: string;
-    }
+    args?: IPreferenceConfig
   ) {
     if (!channel || !category) {
       return getResponsePayload({

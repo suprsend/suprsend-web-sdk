@@ -210,3 +210,10 @@ export interface IFeedData
 export interface IInboxFetchOptions {
   pageSize?: number;
 }
+
+export interface IPreferenceConfig {
+  tenantId?: string;
+  showOptOutChannels?: boolean;
+  tags?: string | Dictionary;
+  locale?: string;
+}
