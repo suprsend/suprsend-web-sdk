@@ -466,7 +466,7 @@ export default class User {
     }
 
     const deviceId: string = this.getDeviceId();
-
+    
     return this.appendInternal({
       $webpush: push,
       $id_provider: 'vapid',
@@ -485,7 +485,9 @@ export default class User {
     }
 
     const deviceId: string = this.getDeviceId();
-
+    
+    await push.unsubscribe();
+    
     return this.removeInternal({
       $webpush: push,
       $id_provider: 'vapid',
