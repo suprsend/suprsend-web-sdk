@@ -31,36 +31,39 @@ export default class ApiClient {
   private requestApiInstance(reqData: HandleRequest) {
     switch (reqData.type) {
       case 'get':
-        return this.get(reqData.url);
+        return this.get(reqData.url, reqData.signal);
       case 'post':
-        return this.post(reqData.url, reqData?.payload || {});
+        return this.post(reqData.url, reqData?.payload || {}, reqData.signal);
       case 'patch':
-        return this.patch(reqData.url, reqData?.payload || {});
+        return this.patch(reqData.url, reqData?.payload || {}, reqData.signal);
       default:
-        return this.get(reqData.url);
+        return this.get(reqData.url, reqData.signal);
     }
   }
 
-  private get(url: string) {
+  private get(url: string, signal?: AbortSignal) {
     return fetch(url, {
       method: 'GET',
       headers: this.getHeaders(),
+      signal,
     });
   }
 
-  private post(url: string, payload: Dictionary) {
+  private post(url: string, payload: Dictionary, signal?: AbortSignal) {
     return fetch(url, {
       method: 'POST',
       body: JSON.stringify(payload),
       headers: this.getHeaders(),
+      signal,
     });
   }
 
-  private patch(url: string, payload: Dictionary) {
+  private patch(url: string, payload: Dictionary, signal?: AbortSignal) {
     return fetch(url, {
       method: 'PATCH',
       body: JSON.stringify(payload),
       headers: this.getHeaders(),
+      signal,
     });
   }
 
