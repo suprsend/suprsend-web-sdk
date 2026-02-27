@@ -99,6 +99,7 @@ export interface HandleRequest {
   type: 'get' | 'post' | 'patch';
   url: string;
   payload?: Dictionary;
+  signal?: AbortSignal;
 }
 
 export interface ValidatedDataOptions {

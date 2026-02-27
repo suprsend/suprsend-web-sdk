@@ -83,6 +83,7 @@ export class Feed {
   private store: StoreApi<INotificationStore>;
   private socket: Socket;
   private expiryTimerId?: ReturnType<typeof setInterval>;
+  private fetchAbortController?: AbortController;
   readonly emitter: Emitter<InboxEmitterEvents> = mitt();
 
   constructor(config: SuprSend, options: IFeedOptions) {
@@ -573,6 +574,12 @@ export class Feed {
       };
     }
 
+    // Cancel any in-progress fetch request to prevent stale data from previous store
+    if (this.fetchAbortController) {
+      this.fetchAbortController.abort();
+      this.fetchAbortController = undefined;
+    }
+
     this.store.setState({
       ...initialFeedStore,
       store: selectedStore,
@@ -656,7 +663,18 @@ export class Feed {
 
     const url = this.getUrl('notifications', queryParams);
 
-    const response = await this.config.client().request({ type: 'get', url });
+    // Create an AbortController for this fetch so it can be cancelled on store switch
+    const abortController = new AbortController();
+    this.fetchAbortController = abortController;
+
+    const response = await this.config
+      .client()
+      .request({ type: 'get', url, signal: abortController.signal });
+
+    // If this fetch was aborted (e.g. user switched stores), discard the response
+    if (abortController.signal.aborted) {
+      return;
+    }
 
     if (response.status === RESPONSE_STATUS.ERROR) {
       this.store.setState({ apiStatus: ApiResponseStatus.ERROR });
