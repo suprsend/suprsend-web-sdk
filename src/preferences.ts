@@ -148,8 +148,9 @@ export default class Preferences {
   /**
    * Used to get user's all channel level preference.
    */
-  async getOverallChannelPreferences() {
-    const url = this.getUrl('channel_preference');
+  async getOverallChannelPreferences(args?: { tenantId?: string }) {
+    const queryParams = { tenant_id: args?.tenantId };
+    const url = this.getUrl('channel_preference', queryParams);
 
     const response = await this.config.client().request({ type: 'get', url });
     return response;
@@ -182,8 +183,8 @@ export default class Preferences {
     return response;
   }
 
-  private async _updateChannelPreferences(body: Dictionary) {
-    const url = this.getUrl('channel_preference');
+  private async _updateChannelPreferences(body: Dictionary, args?: Dictionary) {
+    const url = this.getUrl('channel_preference', args);
 
     const response = await this.config.client().request({
       type: 'patch',
@@ -495,7 +496,8 @@ export default class Preferences {
    */
   async updateOverallChannelPreference(
     channel: string,
-    preference: ChannelLevelPreferenceOptions
+    preference: ChannelLevelPreferenceOptions,
+    args?: { tenantId?: string }
   ) {
     if (
       !channel ||
@@ -560,9 +562,11 @@ export default class Preferences {
       });
     }
 
-    this.debouncedUpdateChannelPreferences(channelData.channel, {
-      channel_preferences: [channelData],
-    });
+    this.debouncedUpdateChannelPreferences(
+      channelData.channel,
+      { channel_preferences: [channelData] },
+      { tenant_id: args?.tenantId || this.preferenceArgs?.tenantId }
+    );
 
     return getResponsePayload({
       status: RESPONSE_STATUS.SUCCESS,
