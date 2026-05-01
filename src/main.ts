@@ -8,6 +8,7 @@ import {
   RefreshTokenCallback,
   ERROR_TYPE,
   RESPONSE_STATUS,
+  ApiResponse,
 } from './interface';
 import ApiClient from './api';
 import {
@@ -180,15 +181,21 @@ export default class SuprSend {
       return getResponsePayload({ status: RESPONSE_STATUS.SUCCESS });
     }
 
+    let resp: ApiResponse;
+    const createUser = options?.createUser !== false;
     // first time login
-    const resp = await this.eventApi({
-      event: '$identify',
-      $insert_id: uuid(),
-      $time: epochMs(),
-      properties: {
-        $identified_id: distinctId,
-      },
-    });
+    if (createUser) {
+      resp = await this.eventApi({
+        event: '$identify',
+        $insert_id: uuid(),
+        $time: epochMs(),
+        properties: {
+          $identified_id: distinctId,
+        },
+      });
+    } else {
+      resp = { status: RESPONSE_STATUS.SUCCESS };
+    }
 
     if (resp.status === RESPONSE_STATUS.SUCCESS) {
       // store user so that other method calls dont need api calls

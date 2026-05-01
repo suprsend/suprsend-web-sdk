@@ -13,6 +13,7 @@ export type RefreshTokenCallback = (
 
 export interface AuthenticateOptions {
   refreshUserToken?: RefreshTokenCallback;
+  createUser?: boolean;
 }
 
 export interface ResponseOptions {

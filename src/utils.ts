@@ -96,8 +96,13 @@ export function windowSupport() {
   return typeof window !== 'undefined';
 }
 
+export function localStorageSupport() {
+  if (!windowSupport() || !window?.localStorage) return false;
+  return true;
+}
+
 export function setLocalStorageData(key: string, value: string) {
-  if (!windowSupport()) return;
+  if (!localStorageSupport()) return;
 
   if (typeof value === 'object') {
     value = JSON.stringify(value);
@@ -106,8 +111,7 @@ export function setLocalStorageData(key: string, value: string) {
 }
 
 export function getLocalStorageData(key: string) {
-  if (!windowSupport()) return;
-
+  if (!localStorageSupport()) return;
   const value = localStorage.getItem(key);
   if (!value) return;
   try {
@@ -118,7 +122,7 @@ export function getLocalStorageData(key: string) {
 }
 
 export function removeLocalStorageData(key: string) {
-  if (!windowSupport()) return;
+  if (!localStorageSupport()) return;
 
   localStorage.removeItem(key);
 }
