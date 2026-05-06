@@ -198,10 +198,10 @@ export function detectEnvironment(ua: string = getUserAgent()): string {
   return 'desktop';
 }
 
-export function buildClientUserAgent(
+export function resolveClientUserAgent(
   appInfo?: AppInfo,
   override?: ClientUserAgentConfig
-): string {
+): ClientUserAgentConfig {
   const ua = getUserAgent();
   const { os, os_version } = detectOS(ua);
   const { browser, browser_version } = detectBrowser(ua);
@@ -222,7 +222,7 @@ export function buildClientUserAgent(
     browser_version,
   };
 
-  if (!override) return JSON.stringify(defaults);
+  if (!override) return defaults;
 
   const merged: ClientUserAgentConfig = { ...defaults };
   for (const key of Object.keys(override) as (keyof ClientUserAgentConfig)[]) {
@@ -234,7 +234,33 @@ export function buildClientUserAgent(
       (merged as Dictionary)[key] = value;
     }
   }
-  return JSON.stringify(merged);
+  return merged;
+}
+
+export function buildClientUserAgent(config: ClientUserAgentConfig): string {
+  return JSON.stringify(config);
+}
+
+function formatAppInfo(info?: AppInfo): string {
+  if (!info?.name) return '';
+  return info.version ? `${info.name}/${info.version}` : info.name;
+}
+
+export function buildUserAgent(config: ClientUserAgentConfig): string {
+  const sdkVersion = config.sdk_version || '';
+  let result = `suprsend-web-sdk/${sdkVersion}`;
+
+  const runtime = config.browser
+    ? `${config.browser}${config.browser_version ? `/${config.browser_version}` : ''}`
+    : config.lang || 'javascript';
+  const detailParts = [runtime];
+  if (config.os) detailParts.push(config.os);
+  result += ` (${detailParts.join('; ')})`;
+
+  const appPart = formatAppInfo(config.app_info);
+  if (appPart) result += ` (${appPart})`;
+
+  return result;
 }
 
 export async function sha256Hash(input: string): Promise<string> {

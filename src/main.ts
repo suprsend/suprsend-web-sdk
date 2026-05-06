@@ -20,6 +20,8 @@ import {
   setLocalStorageData,
   removeLocalStorageData,
   buildClientUserAgent,
+  buildUserAgent,
+  resolveClientUserAgent,
 } from './utils';
 import User from './user';
 import WebPush, { SUPRSEND_ENDPOINT_KEY } from './webpush';
@@ -37,6 +39,7 @@ export default class SuprSend {
   public vapidKey: string;
   public swFileName: string;
   public clientUserAgent: string;
+  public userAgent: string;
   private apiClient: ApiClient | null = null;
   private userTokenExpirationTimer: ReturnType<typeof setTimeout> | null = null;
   public authenticateOptions?: AuthenticateOptions;
@@ -55,10 +58,12 @@ export default class SuprSend {
     this.host = options?.host || DEFAULT_HOST;
     this.vapidKey = options?.vapidKey || '';
     this.swFileName = options?.swFileName || DEFAULT_SW_FILENAME;
-    this.clientUserAgent = buildClientUserAgent(
+    const uaConfig = resolveClientUserAgent(
       options?.appInfo,
       options?.clientUserAgent
     );
+    this.clientUserAgent = buildClientUserAgent(uaConfig);
+    this.userAgent = buildUserAgent(uaConfig);
   }
 
   private handleRefreshUserToken(refreshUserToken: RefreshTokenCallback) {
