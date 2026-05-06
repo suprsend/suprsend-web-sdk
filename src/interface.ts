@@ -1,9 +1,30 @@
 export type Dictionary = Record<string, unknown>;
 
+export interface AppInfo {
+  name?: string;
+  version?: string;
+}
+
+export interface ClientUserAgentConfig {
+  sdk?: string;
+  sdk_version?: string;
+  lang?: string;
+  platform?: string;
+  environment?: string;
+  os?: string;
+  os_version?: string;
+  app_info?: AppInfo;
+  browser?: string;
+  browser_version?: string;
+  device_model?: string;
+}
+
 export interface SuprSendOptions {
   host?: string;
   vapidKey?: string;
   swFileName?: string;
+  appInfo?: AppInfo;
+  clientUserAgent?: ClientUserAgentConfig;
 }
 
 export type RefreshTokenCallback = (

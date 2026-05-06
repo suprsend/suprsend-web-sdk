@@ -19,6 +19,7 @@ export default class ApiClient {
     const headers = {
       'Content-Type': 'application/json',
       Authorization: this.config.publicApiKey,
+      'X-Suprsend-Client-User-Agent': this.config.clientUserAgent,
     };
 
     if (this.config.userToken) {

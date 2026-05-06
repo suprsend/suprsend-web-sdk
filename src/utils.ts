@@ -1,9 +1,12 @@
 import {
   ApiResponse,
+  AppInfo,
+  ClientUserAgentConfig,
   Dictionary,
   ResponseOptions,
   RESPONSE_STATUS,
 } from './interface';
+import { name as SDK_NAME, version as SDK_VERSION } from '../package.json';
 
 export function uuid() {
   let dt = new Date().getTime();
@@ -125,6 +128,113 @@ export function removeLocalStorageData(key: string) {
   if (!localStorageSupport()) return;
 
   localStorage.removeItem(key);
+}
+
+function getUserAgent(): string {
+  return typeof navigator !== 'undefined' ? navigator.userAgent || '' : '';
+}
+
+export function detectOS(ua: string = getUserAgent()): {
+  os: string;
+  os_version: string;
+} {
+  let match: RegExpMatchArray | null;
+
+  if ((match = ua.match(/Windows NT (\d+(?:\.\d+)*)/i))) {
+    return { os: 'windows', os_version: match[1] };
+  }
+  if (
+    (match = ua.match(/(?:iPhone|iPad|iPod)[^;]*;\s*CPU[^)]*OS (\d+[_.]\d+(?:[_.]\d+)?)/i))
+  ) {
+    return { os: 'ios', os_version: match[1].replace(/_/g, '.') };
+  }
+  if ((match = ua.match(/Android (\d+(?:\.\d+)*)/i))) {
+    return { os: 'android', os_version: match[1] };
+  }
+  if ((match = ua.match(/Mac OS X (\d+[_.]\d+(?:[_.]\d+)?)/i))) {
+    return { os: 'mac os', os_version: match[1].replace(/_/g, '.') };
+  }
+  if (/Linux/i.test(ua)) {
+    return { os: 'linux', os_version: '' };
+  }
+  return { os: '', os_version: '' };
+}
+
+export function detectBrowser(ua: string = getUserAgent()): {
+  browser: string;
+  browser_version: string;
+} {
+  let match: RegExpMatchArray | null;
+
+  if ((match = ua.match(/Edg(?:e|A|iOS)?\/(\d+(?:\.\d+)*)/i))) {
+    return { browser: 'edge', browser_version: match[1] };
+  }
+  if ((match = ua.match(/OPR\/(\d+(?:\.\d+)*)/i))) {
+    return { browser: 'opera', browser_version: match[1] };
+  }
+  if ((match = ua.match(/Firefox\/(\d+(?:\.\d+)*)/i))) {
+    return { browser: 'firefox', browser_version: match[1] };
+  }
+  if ((match = ua.match(/Chrome\/(\d+(?:\.\d+)*)/i))) {
+    return { browser: 'chrome', browser_version: match[1] };
+  }
+  if ((match = ua.match(/Version\/(\d+(?:\.\d+)*)[^)]*Safari/i))) {
+    return { browser: 'safari', browser_version: match[1] };
+  }
+  if (/Safari/i.test(ua)) {
+    return { browser: 'safari', browser_version: '' };
+  }
+  return { browser: '', browser_version: '' };
+}
+
+export function detectEnvironment(ua: string = getUserAgent()): string {
+  if (!ua) return '';
+  if (/iPad|Tablet/i.test(ua) || (/Android/i.test(ua) && !/Mobile/i.test(ua))) {
+    return 'tablet';
+  }
+  if (/Mobi|Android|iPhone|iPod/i.test(ua)) {
+    return 'mobile';
+  }
+  return 'desktop';
+}
+
+export function buildClientUserAgent(
+  appInfo?: AppInfo,
+  override?: ClientUserAgentConfig
+): string {
+  const ua = getUserAgent();
+  const { os, os_version } = detectOS(ua);
+  const { browser, browser_version } = detectBrowser(ua);
+
+  const defaults: ClientUserAgentConfig = {
+    sdk: (SDK_NAME || '').toLowerCase(),
+    sdk_version: (SDK_VERSION || '').toLowerCase(),
+    lang: 'javascript',
+    platform: 'browser',
+    environment: detectEnvironment(ua),
+    os,
+    os_version,
+    app_info: {
+      name: appInfo?.name || '',
+      version: appInfo?.version || '',
+    },
+    browser,
+    browser_version,
+  };
+
+  if (!override) return JSON.stringify(defaults);
+
+  const merged: ClientUserAgentConfig = { ...defaults };
+  for (const key of Object.keys(override) as (keyof ClientUserAgentConfig)[]) {
+    const value = override[key];
+    if (value === undefined) continue;
+    if (key === 'app_info') {
+      merged.app_info = { ...defaults.app_info, ...(value as AppInfo) };
+    } else {
+      (merged as Dictionary)[key] = value;
+    }
+  }
+  return JSON.stringify(merged);
 }
 
 export async function sha256Hash(input: string): Promise<string> {
