@@ -144,7 +144,9 @@ export function detectOS(ua: string = getUserAgent()): {
     return { os: 'windows', os_version: match[1] };
   }
   if (
-    (match = ua.match(/(?:iPhone|iPad|iPod)[^;]*;\s*CPU[^)]*OS (\d+[_.]\d+(?:[_.]\d+)?)/i))
+    (match = ua.match(
+      /(?:iPhone|iPad|iPod)[^;]*;\s*CPU[^)]*OS (\d+[_.]\d+(?:[_.]\d+)?)/i
+    ))
   ) {
     return { os: 'ios', os_version: match[1].replace(/_/g, '.') };
   }
@@ -225,6 +227,8 @@ export function buildClientUserAgent(
   if (!override) return defaults;
 
   const merged: ClientUserAgentConfig = { ...defaults };
+
+  // merge override into defaults, with special handling for app_info to merge its properties
   for (const key of Object.keys(override) as (keyof ClientUserAgentConfig)[]) {
     const value = override[key];
     if (value === undefined) continue;
