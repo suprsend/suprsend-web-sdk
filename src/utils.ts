@@ -247,15 +247,17 @@ function formatAppInfo(info?: AppInfo): string {
 }
 
 export function buildUserAgent(config: ClientUserAgentConfig): string {
+  const sdkName = config.sdk || '';
   const sdkVersion = config.sdk_version || '';
-  let result = `suprsend-web-sdk/${sdkVersion}`;
+  let result = sdkVersion ? `${sdkName}/${sdkVersion}` : sdkName;
 
   const runtime = config.browser
     ? `${config.browser}${config.browser_version ? `/${config.browser_version}` : ''}`
-    : config.lang || 'javascript';
-  const detailParts = [runtime];
+    : config.lang || '';
+  const detailParts: string[] = [];
+  if (runtime) detailParts.push(runtime);
   if (config.os) detailParts.push(config.os);
-  result += ` (${detailParts.join('; ')})`;
+  if (detailParts.length) result += ` (${detailParts.join('; ')})`;
 
   const appPart = formatAppInfo(config.app_info);
   if (appPart) result += ` (${appPart})`;
