@@ -198,7 +198,7 @@ export function detectEnvironment(ua: string = getUserAgent()): string {
   return 'desktop';
 }
 
-export function resolveClientUserAgent(
+export function buildClientUserAgent(
   appInfo?: AppInfo,
   override?: ClientUserAgentConfig
 ): ClientUserAgentConfig {
@@ -235,10 +235,6 @@ export function resolveClientUserAgent(
     }
   }
   return merged;
-}
-
-export function buildClientUserAgent(config: ClientUserAgentConfig): string {
-  return JSON.stringify(config);
 }
 
 function formatAppInfo(info?: AppInfo): string {
