@@ -216,13 +216,16 @@ export function buildClientUserAgent(
     environment: detectEnvironment(ua),
     os,
     os_version,
-    app_info: {
-      name: appInfo?.name || '',
-      version: appInfo?.version || '',
-    },
     browser,
     browser_version,
   };
+
+  if (appInfo?.name) {
+    defaults.app_info = {
+      name: appInfo.name,
+      version: appInfo.version || '',
+    };
+  }
 
   if (!override) return defaults;
 
