@@ -89,7 +89,6 @@ export default class ApiClient {
       const expiresOn = ((jwtPayload.exp as number) || 0) * 1000; // in ms
       const now = Date.now(); // in ms
       const hasExpired = expiresOn <= now;
-
       if (hasExpired) {
         try {
           const newUserToken =
@@ -128,11 +127,7 @@ export default class ApiClient {
       });
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (e: any) {
-      console.error('[SuprSend]: API error', {
-        type: reqData.type,
-        url: reqData.url,
-        error: e,
-      });
+      console.error(e);
 
       return getResponsePayload({
         status: RESPONSE_STATUS.ERROR,
