@@ -19,6 +19,10 @@ export default class ApiClient {
     const headers = {
       'Content-Type': 'application/json',
       Authorization: this.config.publicApiKey,
+      'X-Suprsend-Client-User-Agent': JSON.stringify(
+        this.config.clientUserAgent
+      ),
+      'X-Suprsend-User-Agent': this.config.userAgent,
     };
 
     if (this.config.userToken) {
@@ -85,6 +89,7 @@ export default class ApiClient {
       const expiresOn = ((jwtPayload.exp as number) || 0) * 1000; // in ms
       const now = Date.now(); // in ms
       const hasExpired = expiresOn <= now;
+
       if (hasExpired) {
         try {
           const newUserToken =
@@ -123,7 +128,11 @@ export default class ApiClient {
       });
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (e: any) {
-      console.error(e);
+      console.error('[SuprSend]: API error', {
+        type: reqData.type,
+        url: reqData.url,
+        error: e,
+      });
 
       return getResponsePayload({
         status: RESPONSE_STATUS.ERROR,

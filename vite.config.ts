@@ -26,6 +26,7 @@ export default defineConfig(({ mode }) => {
     plugins: [
       dts({
         outDir: 'dist/types',
+        entryRoot: 'src',
       }),
     ],
   };

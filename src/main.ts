@@ -8,6 +8,8 @@ import {
   RefreshTokenCallback,
   ERROR_TYPE,
   RESPONSE_STATUS,
+  ApiResponse,
+  ClientUserAgentConfig,
 } from './interface';
 import ApiClient from './api';
 import {
@@ -18,6 +20,8 @@ import {
   getLocalStorageData,
   setLocalStorageData,
   removeLocalStorageData,
+  buildUserAgent,
+  buildClientUserAgent,
 } from './utils';
 import User from './user';
 import WebPush, { SUPRSEND_ENDPOINT_KEY } from './webpush';
@@ -34,6 +38,8 @@ export default class SuprSend {
   public userToken?: string;
   public vapidKey: string;
   public swFileName: string;
+  public clientUserAgent: ClientUserAgentConfig;
+  public userAgent: string;
   private apiClient: ApiClient | null = null;
   private userTokenExpirationTimer: ReturnType<typeof setTimeout> | null = null;
   public authenticateOptions?: AuthenticateOptions;
@@ -52,6 +58,11 @@ export default class SuprSend {
     this.host = options?.host || DEFAULT_HOST;
     this.vapidKey = options?.vapidKey || '';
     this.swFileName = options?.swFileName || DEFAULT_SW_FILENAME;
+    this.clientUserAgent = buildClientUserAgent(
+      options?.appInfo,
+      options?.clientUserAgent
+    );
+    this.userAgent = buildUserAgent(this.clientUserAgent);
   }
 
   private handleRefreshUserToken(refreshUserToken: RefreshTokenCallback) {
@@ -180,15 +191,21 @@ export default class SuprSend {
       return getResponsePayload({ status: RESPONSE_STATUS.SUCCESS });
     }
 
+    let resp: ApiResponse;
+    const createUser = options?.createUser !== false;
     // first time login
-    const resp = await this.eventApi({
-      event: '$identify',
-      $insert_id: uuid(),
-      $time: epochMs(),
-      properties: {
-        $identified_id: distinctId,
-      },
-    });
+    if (createUser) {
+      resp = await this.eventApi({
+        event: '$identify',
+        $insert_id: uuid(),
+        $time: epochMs(),
+        properties: {
+          $identified_id: distinctId,
+        },
+      });
+    } else {
+      resp = { status: RESPONSE_STATUS.SUCCESS };
+    }
 
     if (resp.status === RESPONSE_STATUS.SUCCESS) {
       // store user so that other method calls dont need api calls
