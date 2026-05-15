@@ -89,11 +89,7 @@ export default class ApiClient {
       const expiresOn = ((jwtPayload.exp as number) || 0) * 1000; // in ms
       const now = Date.now(); // in ms
       const hasExpired = expiresOn <= now;
-      console.log('[SuprSend]: Checking token expiry', {
-        expiresOn: new Date(expiresOn).toISOString(),
-        now: new Date(now).toISOString(),
-        hasExpired,
-      });
+
       if (hasExpired) {
         try {
           const newUserToken =
@@ -116,26 +112,12 @@ export default class ApiClient {
     }
 
     try {
-      console.log('[SuprSend]: API request', {
-        type: reqData.type,
-        url: reqData.url,
-        payload: reqData.payload,
-      });
-
       const resp = await this.requestApiInstance(reqData);
       const respData = await resp.json();
 
       const respStatus =
         respData?.status ||
         (resp.ok ? RESPONSE_STATUS.SUCCESS : RESPONSE_STATUS.ERROR);
-
-      console.log('[SuprSend]: API response', {
-        type: reqData.type,
-        url: reqData.url,
-        statusCode: resp.status,
-        status: respStatus,
-        body: respData,
-      });
 
       return getResponsePayload({
         status: respStatus,
