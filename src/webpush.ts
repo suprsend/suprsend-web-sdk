@@ -19,12 +19,12 @@ export default class WebPush {
   }
 
   private async getPushSubscription() {
-    if (!windowSupport()) return;
+    if (!windowSupport() || !('serviceWorker' in navigator)) return;
 
     const registration = await navigator.serviceWorker.getRegistration();
     if (!registration) return;
 
-    const subscription = registration.pushManager.getSubscription();
+    const subscription = await registration.pushManager.getSubscription();
     if (!subscription) return;
     return subscription;
   }
