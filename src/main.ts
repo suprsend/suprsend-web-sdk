@@ -187,7 +187,9 @@ export default class SuprSend {
 
     // already loggedin
     if (authenticatedDistinctId == this.distinctId) {
-      this.webpush.updatePushSubscription();
+      this.webpush.updatePushSubscription().catch(() => {
+        // pass
+      });
       return getResponsePayload({ status: RESPONSE_STATUS.SUCCESS });
     }
 
@@ -209,7 +211,9 @@ export default class SuprSend {
 
     if (resp.status === RESPONSE_STATUS.SUCCESS) {
       // store user so that other method calls dont need api calls
-      this.webpush.updatePushSubscription();
+      this.webpush.updatePushSubscription().catch(() => {
+        // pass
+      });
       setLocalStorageData(AUTHENTICATED_DISTINCT_ID, this.distinctId as string);
     } else {
       // reset user data so that user can retry
