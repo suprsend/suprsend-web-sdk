@@ -492,6 +492,180 @@ export default class Preferences {
   }
 
   /**
+   * Used to update user's category level digest configuration.
+   */
+  async updateDigestScheduleInCategory(
+    category: string,
+    digestSchedule: Dictionary,
+    args?: IPreferenceConfig
+  ) {
+    if (!category) {
+      return getResponsePayload({
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
+        errorMessage: 'Category parameter is missing',
+      });
+    }
+
+    if (!digestSchedule || typeof digestSchedule !== 'object') {
+      return getResponsePayload({
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
+        errorMessage: 'Digest schedule parameter is invalid',
+      });
+    }
+
+    if (!this.data) {
+      return getResponsePayload({
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
+        errorMessage: 'Call getPreferences method before performing action',
+      });
+    }
+
+    if (!this.data.sections) {
+      return getResponsePayload({
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
+        errorMessage: "Sections doesn't exist",
+      });
+    }
+
+    let categoryData: Category | null = null;
+
+    // optimistic update in local store
+    for (const section of this.data.sections) {
+      let abort = false;
+      if (!section.subcategories) continue;
+
+      for (const subcategory of section.subcategories) {
+        if (subcategory.category === category) {
+          categoryData = subcategory;
+          abort = true;
+          break;
+        }
+      }
+      if (abort) break;
+    }
+
+    if (!categoryData) {
+      return getResponsePayload({
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
+        errorMessage: 'Category not found',
+      });
+    }
+
+    let showOptOutChannels = true;
+    if (typeof args?.showOptOutChannels === 'boolean') {
+      showOptOutChannels = args?.showOptOutChannels;
+    } else if (typeof this.preferenceArgs?.showOptOutChannels === 'boolean') {
+      showOptOutChannels = this.preferenceArgs.showOptOutChannels;
+    }
+
+    const requestPayload = { digest_schedule: digestSchedule };
+
+    return this._updateCategoryPreferences(
+      category,
+      requestPayload,
+      categoryData,
+      {
+        tenant_id: args?.tenantId || this.preferenceArgs?.tenantId,
+        show_opt_out_channels: showOptOutChannels,
+        tags: args?.tags || this.preferenceArgs?.tags,
+        locale: args?.locale || this.preferenceArgs?.locale,
+      }
+    );
+  }
+
+  /**
+   * Used to update user's category level condition configuration.
+   */
+  async updateConditionAttributesInCategory(
+    category: string,
+    conditionAttributes: Dictionary,
+    args?: IPreferenceConfig
+  ) {
+    if (!category) {
+      return getResponsePayload({
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
+        errorMessage: 'Category parameter is missing',
+      });
+    }
+
+    if (!conditionAttributes || typeof conditionAttributes !== 'object') {
+      return getResponsePayload({
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
+        errorMessage: 'Condition attributes parameter is invalid',
+      });
+    }
+
+    if (!this.data) {
+      return getResponsePayload({
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
+        errorMessage: 'Call getPreferences method before performing action',
+      });
+    }
+
+    if (!this.data.sections) {
+      return getResponsePayload({
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
+        errorMessage: "Sections doesn't exist",
+      });
+    }
+
+    let categoryData: Category | null = null;
+
+    // optimistic update in local store
+    for (const section of this.data.sections) {
+      let abort = false;
+      if (!section.subcategories) continue;
+
+      for (const subcategory of section.subcategories) {
+        if (subcategory.category === category) {
+          categoryData = subcategory;
+          abort = true;
+          break;
+        }
+      }
+      if (abort) break;
+    }
+
+    if (!categoryData) {
+      return getResponsePayload({
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
+        errorMessage: 'Category not found',
+      });
+    }
+
+    let showOptOutChannels = true;
+    if (typeof args?.showOptOutChannels === 'boolean') {
+      showOptOutChannels = args?.showOptOutChannels;
+    } else if (typeof this.preferenceArgs?.showOptOutChannels === 'boolean') {
+      showOptOutChannels = this.preferenceArgs.showOptOutChannels;
+    }
+
+    const requestPayload = { condition_attributes: conditionAttributes };
+
+    return this._updateCategoryPreferences(
+      category,
+      requestPayload,
+      categoryData,
+      {
+        tenant_id: args?.tenantId || this.preferenceArgs?.tenantId,
+        show_opt_out_channels: showOptOutChannels,
+        tags: args?.tags || this.preferenceArgs?.tags,
+        locale: args?.locale || this.preferenceArgs?.locale,
+      }
+    );
+  }
+
+  /**
    * Used to update user's channel level preference.
    */
   async updateOverallChannelPreference(

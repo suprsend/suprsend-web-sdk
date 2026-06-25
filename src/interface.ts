@@ -82,6 +82,8 @@ export interface Category {
   preference: PreferenceOptions;
   is_editable: boolean;
   channels?: CategoryChannel[] | null;
+  digest_schedule?: Dictionary | null;
+  condition_attributes?: Dictionary | null;
 }
 
 export interface Section {
@@ -227,8 +229,10 @@ export interface INotificationStore {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
-export interface IFeedData
-  extends Omit<INotificationStore, '_firstFetchedTimeStamp'> {}
+export interface IFeedData extends Omit<
+  INotificationStore,
+  '_firstFetchedTimeStamp'
+> {}
 
 export interface IInboxFetchOptions {
   pageSize?: number;
