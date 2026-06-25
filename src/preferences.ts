@@ -10,6 +10,8 @@ import {
   ERROR_TYPE,
   RESPONSE_STATUS,
   IPreferenceConfig,
+  UpdateCategoryDigestSchedulePayload,
+  UpdateCategoryPropertyPayload,
 } from './interface';
 import { debounceByType, getResponsePayload } from './utils';
 
@@ -496,7 +498,7 @@ export default class Preferences {
    */
   async updateDigestScheduleInCategory(
     category: string,
-    digestSchedule: Dictionary,
+    digestSchedule: UpdateCategoryDigestSchedulePayload,
     args?: IPreferenceConfig
   ) {
     if (!category) {
@@ -533,7 +535,7 @@ export default class Preferences {
 
     let categoryData: Category | null = null;
 
-    // optimistic update in local store
+    // get category data from local store
     for (const section of this.data.sections) {
       let abort = false;
       if (!section.subcategories) continue;
@@ -563,7 +565,10 @@ export default class Preferences {
       showOptOutChannels = this.preferenceArgs.showOptOutChannels;
     }
 
-    const requestPayload = { digest_schedule: digestSchedule };
+    const requestPayload = {
+      digest_schedule: digestSchedule,
+      preference: categoryData.preference,
+    };
 
     return this._updateCategoryPreferences(
       category,
@@ -581,9 +586,9 @@ export default class Preferences {
   /**
    * Used to update user's category level condition configuration.
    */
-  async updateConditionAttributesInCategory(
+  async updatePropertiesInCategory(
     category: string,
-    conditionAttributes: Dictionary,
+    properties: UpdateCategoryPropertyPayload[],
     args?: IPreferenceConfig
   ) {
     if (!category) {
@@ -594,11 +599,11 @@ export default class Preferences {
       });
     }
 
-    if (!conditionAttributes || typeof conditionAttributes !== 'object') {
+    if (!properties || !Array.isArray(properties)) {
       return getResponsePayload({
         status: RESPONSE_STATUS.ERROR,
         errorType: ERROR_TYPE.VALIDATION_ERROR,
-        errorMessage: 'Condition attributes parameter is invalid',
+        errorMessage: 'Properties parameter is invalid',
       });
     }
 
@@ -620,7 +625,7 @@ export default class Preferences {
 
     let categoryData: Category | null = null;
 
-    // optimistic update in local store
+    // get category data from local store
     for (const section of this.data.sections) {
       let abort = false;
       if (!section.subcategories) continue;
@@ -650,7 +655,10 @@ export default class Preferences {
       showOptOutChannels = this.preferenceArgs.showOptOutChannels;
     }
 
-    const requestPayload = { condition_attributes: conditionAttributes };
+    const requestPayload = {
+      properties,
+      preference: categoryData.preference,
+    };
 
     return this._updateCategoryPreferences(
       category,

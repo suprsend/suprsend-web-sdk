@@ -82,8 +82,102 @@ export interface Category {
   preference: PreferenceOptions;
   is_editable: boolean;
   channels?: CategoryChannel[] | null;
-  digest_schedule?: Dictionary | null;
-  condition_attributes?: Dictionary | null;
+  digest_schedule?: CategoryDigestSchedule | null;
+  properties?: CategoryProperties | null;
+}
+
+export interface CategoryDigestSchedule {
+  id: string;
+  label: string;
+  frequency: FrequencyEnum;
+  interval: number;
+  weekdays?: IWeekDays;
+  monthdays?: IMonthDays;
+  start_time?: IStartTime;
+  dtstart?: IDateStart;
+  is_default: boolean;
+  is_user_selected: boolean;
+}
+
+export interface IDateStart {
+  edit_policy?: EditPolicy;
+  default_value: string;
+  value?: string;
+}
+
+export interface IStartTime {
+  edit_policy?: EditPolicy;
+  default_value: string;
+  value?: string;
+}
+
+export interface IMonthDays {
+  edit_policy?: EditPolicy;
+  default_value: MonthDays[];
+  value?: MonthDays[];
+}
+
+export interface IWeekDays {
+  edit_policy?: EditPolicy;
+  default_value: WeekDaysEnum[];
+  value?: WeekDaysEnum[];
+}
+
+export enum FrequencyEnum {
+  INSTANTLY = 'instantly',
+  MINUTELY = 'minutely',
+  HOURLY = 'hourly',
+  DAILY = 'daily',
+  WEEKLY = 'weekly',
+  WEEKLY_MO2FR = 'weekly_mo2fr',
+  MONTHLY = 'monthly',
+}
+
+export interface CategoryProperties extends UpdateCategoryPropertyPayload {
+  label: string;
+  edit_policy: EditPolicy;
+  is_optional: boolean;
+  value_type: string;
+  default_value: string | number | string[];
+  choices?: ChoiceItem[];
+}
+
+export enum EditPolicy {
+  LOCKED = 'locked',
+  EDITABLE = 'editable',
+}
+
+interface ChoiceItem {
+  label: string;
+  value: any;
+}
+
+export interface UpdateCategoryDigestSchedulePayload {
+  id: string;
+  start_time?: string;
+  dtstart?: string;
+  weekdays?: WeekDaysEnum[];
+  monthdays?: MonthDays[];
+}
+
+export interface UpdateCategoryPropertyPayload {
+  key: string;
+  value: string | number | string[];
+}
+
+export interface MonthDays {
+  pos: number;
+  day?: WeekDaysEnum[];
+}
+
+export enum WeekDaysEnum {
+  SUNDAY = 'su',
+  MONDAY = 'mo',
+  TUESDAY = 'tu',
+  WEDNESDAY = 'we',
+  THURSDAY = 'th',
+  FRIDAY = 'fr',
+  SATURDAY = 'sa',
 }
 
 export interface Section {
