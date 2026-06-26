@@ -137,9 +137,18 @@ export interface CategoryProperties extends UpdateCategoryPropertyPayload {
   label: string;
   edit_policy: EditPolicy;
   is_optional: boolean;
-  value_type: string;
+  value_type: PropertyValueTypeEnum;
   default_value: string | number | string[];
   choices?: ChoiceItem[];
+}
+
+export enum PropertyValueTypeEnum {
+  INTEGER = 'integer',
+  STRING = 'string',
+  STRING_CHOICE = 'string_choice',
+  LIST_CHOICE = 'list_choice',
+  STRING_DYNAMIC = 'string_dynamic',
+  LIST_DYNAMIC = 'list_dynamic',
 }
 
 export enum EditPolicy {
