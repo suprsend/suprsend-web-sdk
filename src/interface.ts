@@ -139,6 +139,7 @@ export interface CategoryProperties extends UpdateCategoryPropertyPayload {
   is_optional: boolean;
   is_overridden: boolean;
   value_type: PropertyValueTypeEnum;
+  dynamic_choices_key?: string;
   default_value: string | number | string[];
   choices?: ChoiceItem[];
 }
