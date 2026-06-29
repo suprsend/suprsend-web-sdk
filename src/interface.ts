@@ -82,6 +82,113 @@ export interface Category {
   preference: PreferenceOptions;
   is_editable: boolean;
   channels?: CategoryChannel[] | null;
+  digest_schedule?: CategoryDigestSchedule | null;
+  properties?: CategoryProperties | null;
+}
+
+export interface CategoryDigestSchedule {
+  id: string;
+  label: string;
+  frequency: FrequencyEnum;
+  interval: number;
+  weekdays?: IWeekDays;
+  monthdays?: IMonthDays;
+  time?: ITime;
+  dtstart?: IDateStart;
+  is_default: boolean;
+  is_user_selected: boolean;
+}
+
+export interface IDateStart {
+  edit_policy?: EditPolicy;
+  default_value: string;
+  value?: string;
+}
+
+export interface ITime {
+  edit_policy?: EditPolicy;
+  default_value: string;
+  value?: string;
+}
+
+export interface IMonthDays {
+  edit_policy?: EditPolicy;
+  default_value: MonthDays[];
+  value?: MonthDays[];
+}
+
+export interface IWeekDays {
+  edit_policy?: EditPolicy;
+  default_value: WeekDaysEnum[];
+  value?: WeekDaysEnum[];
+}
+
+export enum FrequencyEnum {
+  INSTANTLY = 'instantly',
+  MINUTELY = 'minutely',
+  HOURLY = 'hourly',
+  DAILY = 'daily',
+  WEEKLY = 'weekly',
+  WEEKLY_MO2FR = 'weekly_mo2fr',
+  MONTHLY = 'monthly',
+}
+
+export interface CategoryProperties extends UpdateCategoryPropertyPayload {
+  label: string;
+  edit_policy: EditPolicy;
+  is_optional: boolean;
+  is_overridden: boolean;
+  value_type: PropertyValueTypeEnum;
+  dynamic_choices_key?: string;
+  default_value: string | number | string[];
+  choices?: ChoiceItem[];
+}
+
+export enum PropertyValueTypeEnum {
+  INTEGER = 'integer',
+  STRING = 'string',
+  STRING_CHOICE = 'string_choice',
+  LIST_CHOICE = 'list_choice',
+  STRING_DYNAMIC = 'string_dynamic',
+  LIST_DYNAMIC = 'list_dynamic',
+}
+
+export enum EditPolicy {
+  LOCKED = 'locked',
+  EDITABLE = 'editable',
+}
+
+export interface ChoiceItem {
+  label: string;
+  value: any;
+}
+
+export interface UpdateCategoryDigestSchedulePayload {
+  id: string;
+  time?: string;
+  dtstart?: string;
+  weekdays?: WeekDaysEnum[];
+  monthdays?: MonthDays[];
+}
+
+export interface UpdateCategoryPropertyPayload {
+  key: string;
+  value: string | number | string[];
+}
+
+export interface MonthDays {
+  pos: number;
+  day?: WeekDaysEnum[];
+}
+
+export enum WeekDaysEnum {
+  SUNDAY = 'su',
+  MONDAY = 'mo',
+  TUESDAY = 'tu',
+  WEDNESDAY = 'we',
+  THURSDAY = 'th',
+  FRIDAY = 'fr',
+  SATURDAY = 'sa',
 }
 
 export interface Section {
@@ -227,8 +334,10 @@ export interface INotificationStore {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-empty-interface
-export interface IFeedData
-  extends Omit<INotificationStore, '_firstFetchedTimeStamp'> {}
+export interface IFeedData extends Omit<
+  INotificationStore,
+  '_firstFetchedTimeStamp'
+> {}
 
 export interface IInboxFetchOptions {
   pageSize?: number;
