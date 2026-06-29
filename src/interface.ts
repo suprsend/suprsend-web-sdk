@@ -93,7 +93,7 @@ export interface CategoryDigestSchedule {
   interval: number;
   weekdays?: IWeekDays;
   monthdays?: IMonthDays;
-  start_time?: IStartTime;
+  time?: ITime;
   dtstart?: IDateStart;
   is_default: boolean;
   is_user_selected: boolean;
@@ -105,7 +105,7 @@ export interface IDateStart {
   value?: string;
 }
 
-export interface IStartTime {
+export interface ITime {
   edit_policy?: EditPolicy;
   default_value: string;
   value?: string;
@@ -137,6 +137,7 @@ export interface CategoryProperties extends UpdateCategoryPropertyPayload {
   label: string;
   edit_policy: EditPolicy;
   is_optional: boolean;
+  is_overridden: boolean;
   value_type: PropertyValueTypeEnum;
   default_value: string | number | string[];
   choices?: ChoiceItem[];
@@ -156,14 +157,14 @@ export enum EditPolicy {
   EDITABLE = 'editable',
 }
 
-interface ChoiceItem {
+export interface ChoiceItem {
   label: string;
   value: any;
 }
 
 export interface UpdateCategoryDigestSchedulePayload {
   id: string;
-  start_time?: string;
+  time?: string;
   dtstart?: string;
   weekdays?: WeekDaysEnum[];
   monthdays?: MonthDays[];
