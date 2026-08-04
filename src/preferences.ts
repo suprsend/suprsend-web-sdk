@@ -17,7 +17,7 @@ import { debounceByType, getResponsePayload } from './utils';
 
 export default class Preferences {
   private config: SuprSend;
-  private preferenceData: PreferenceData;
+  private preferenceData?: PreferenceData;
   private preferenceArgs?: IPreferenceConfig;
   private debouncedUpdateCategoryPreferences;
   private debouncedUpdateChannelPreferences;
@@ -50,12 +50,25 @@ export default class Preferences {
     return validatedParams;
   }
 
+  private resolveTenantId(tenantId?: string) {
+    if (tenantId) return tenantId;
+
+    if (this.preferenceArgs) return this.preferenceArgs.tenantId;
+
+    return this.config.tenantId;
+  }
+
   set data(value) {
     this.preferenceData = value;
   }
 
   get data() {
     return this.preferenceData;
+  }
+
+  reset() {
+    this.data = undefined;
+    this.preferenceArgs = undefined;
   }
 
   getUrl(path: string, qp?: Dictionary) {
@@ -74,14 +87,14 @@ export default class Preferences {
    */
   async getPreferences(args?: IPreferenceConfig) {
     const queryParams = {
-      tenant_id: args?.tenantId,
+      tenant_id: args?.tenantId || this.config.tenantId,
       show_opt_out_channels: args?.showOptOutChannels === false ? false : true,
       tags: args?.tags,
       locale: args?.locale,
     };
 
     this.preferenceArgs = {
-      tenantId: queryParams?.tenant_id,
+      tenantId: queryParams.tenant_id,
       showOptOutChannels: queryParams?.show_opt_out_channels,
       tags: queryParams?.tags,
       locale: queryParams?.locale,
@@ -108,7 +121,7 @@ export default class Preferences {
     offset?: number;
   }) {
     const queryParams = {
-      tenant_id: args?.tenantId,
+      tenant_id: args?.tenantId || this.config.tenantId,
       show_opt_out_channels: args?.showOptOutChannels === false ? false : true,
       limit: args?.limit,
       offset: args?.offset,
@@ -137,7 +150,7 @@ export default class Preferences {
     }
 
     const queryParams = {
-      tenant_id: args?.tenantId,
+      tenant_id: args?.tenantId || this.config.tenantId,
       show_opt_out_channels: args?.showOptOutChannels === false ? false : true,
       locale: args?.locale,
     };
@@ -151,7 +164,7 @@ export default class Preferences {
    * Used to get user's all channel level preference.
    */
   async getOverallChannelPreferences(args?: { tenantId?: string }) {
-    const queryParams = { tenant_id: args?.tenantId };
+    const queryParams = { tenant_id: args?.tenantId || this.config.tenantId };
     const url = this.getUrl('channel_preference', queryParams);
 
     const response = await this.config.client().request({ type: 'get', url });
@@ -321,7 +334,7 @@ export default class Preferences {
       requestPayload,
       categoryData,
       {
-        tenant_id: args?.tenantId || this.preferenceArgs?.tenantId,
+        tenant_id: this.resolveTenantId(args?.tenantId),
         show_opt_out_channels: showOptOutChannels,
         tags: args?.tags || this.preferenceArgs?.tags,
         locale: args?.locale || this.preferenceArgs?.locale,
@@ -480,7 +493,7 @@ export default class Preferences {
       requestPayload,
       categoryData,
       {
-        tenant_id: args?.tenantId || this.preferenceArgs?.tenantId,
+        tenant_id: this.resolveTenantId(args?.tenantId),
         show_opt_out_channels: showOptOutChannels,
         tags: args?.tags || this.preferenceArgs?.tags,
         locale: args?.locale || this.preferenceArgs?.locale,
@@ -575,7 +588,7 @@ export default class Preferences {
       requestPayload,
       categoryData,
       {
-        tenant_id: args?.tenantId || this.preferenceArgs?.tenantId,
+        tenant_id: this.resolveTenantId(args?.tenantId),
         show_opt_out_channels: showOptOutChannels,
         tags: args?.tags || this.preferenceArgs?.tags,
         locale: args?.locale || this.preferenceArgs?.locale,
@@ -665,7 +678,7 @@ export default class Preferences {
       requestPayload,
       categoryData,
       {
-        tenant_id: args?.tenantId || this.preferenceArgs?.tenantId,
+        tenant_id: this.resolveTenantId(args?.tenantId),
         show_opt_out_channels: showOptOutChannels,
         tags: args?.tags || this.preferenceArgs?.tags,
         locale: args?.locale || this.preferenceArgs?.locale,
@@ -747,7 +760,7 @@ export default class Preferences {
     this.debouncedUpdateChannelPreferences(
       channelData.channel,
       { channel_preferences: [channelData] },
-      { tenant_id: args?.tenantId || this.preferenceArgs?.tenantId }
+      { tenant_id: this.resolveTenantId(args?.tenantId) }
     );
 
     return getResponsePayload({

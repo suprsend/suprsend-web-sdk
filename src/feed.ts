@@ -95,8 +95,9 @@ export class Feed {
   private setOptions(options: IFeedOptions) {
     this.feedOptions = { ...feedOptionsDefaults };
 
-    if (options?.tenantId) {
-      this.feedOptions.tenantId = options.tenantId;
+    const tenantId = options?.tenantId || this.config.tenantId;
+    if (tenantId) {
+      this.feedOptions.tenantId = tenantId;
     }
 
     if (options?.host) {

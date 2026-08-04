@@ -35,6 +35,11 @@ export type RefreshTokenCallback = (
 export interface AuthenticateOptions {
   refreshUserToken?: RefreshTokenCallback;
   createUser?: boolean;
+  tenantId?: string;
+}
+
+export interface TrackOptions {
+  tenantId?: string;
 }
 
 export interface ResponseOptions {

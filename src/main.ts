@@ -10,6 +10,7 @@ import {
   RESPONSE_STATUS,
   ApiResponse,
   ClientUserAgentConfig,
+  TrackOptions,
 } from './interface';
 import ApiClient from './api';
 import {
@@ -36,6 +37,7 @@ export default class SuprSend {
   public publicApiKey: string;
   public distinctId: unknown;
   public userToken?: string;
+  public tenantId?: string;
   public vapidKey: string;
   public swFileName: string;
   public clientUserAgent: ClientUserAgentConfig;
@@ -154,6 +156,10 @@ export default class SuprSend {
       });
     }
 
+    if (options?.tenantId) {
+      this.tenantId = options.tenantId;
+    }
+
     // updating usertoken for existing user
     if (
       this.apiClient &&
@@ -176,7 +182,8 @@ export default class SuprSend {
     this.distinctId = distinctId;
     this.userToken = userToken;
     this.apiClient = new ApiClient(this);
-    this.authenticateOptions = options;
+    const { tenantId: _tenantId, ...authOptions } = options || {};
+    this.authenticateOptions = authOptions;
     const authenticatedDistinctId = getLocalStorageData(
       AUTHENTICATED_DISTINCT_ID
     );
@@ -201,6 +208,7 @@ export default class SuprSend {
         event: '$identify',
         $insert_id: uuid(),
         $time: epochMs(),
+        tenant_id: this.tenantId || null,
         properties: {
           $identified_id: distinctId,
         },
@@ -232,9 +240,33 @@ export default class SuprSend {
   }
 
   /**
+   * Used to switch active tenant of identified user. Already running feed instances
+   * keep the tenant they were initialized with.
+   */
+  changeTenant(tenantId: string) {
+    if (!tenantId || typeof tenantId !== 'string') {
+      return getResponsePayload({
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
+        errorMessage: 'tenantId is missing or invalid',
+      });
+    }
+
+    if (!this.isIdentified()) {
+      console.warn(
+        '[SuprSend]: changeTenant called before identify. Tenant will apply once user is identified'
+      );
+    }
+
+    this.tenantId = tenantId;
+
+    return getResponsePayload({ status: RESPONSE_STATUS.SUCCESS });
+  }
+
+  /**
    *  Used to trigger events to suprsend.
    */
-  async track(event: string, properties?: Dictionary) {
+  async track(event: string, properties?: Dictionary, options?: TrackOptions) {
     let propertiesObj: Dictionary = {};
 
     if (!event) {
@@ -254,6 +286,7 @@ export default class SuprSend {
       $insert_id: uuid(),
       $time: epochMs(),
       distinct_id: this.distinctId,
+      tenant_id: options?.tenantId || this.tenantId || null,
       properties: propertiesObj,
     });
   }
@@ -272,11 +305,14 @@ export default class SuprSend {
     this.apiClient = null;
     this.distinctId = null;
     this.userToken = '';
+    this.tenantId = undefined;
     // removeLocalStorageData(AUTHENTICATED_DISTINCT_ID);
 
     if (this.userTokenExpirationTimer) {
       clearTimeout(this.userTokenExpirationTimer);
     }
+
+    this.user.preferences.reset();
 
     if (this.feeds.feedInstances?.length > 0) {
       this.feeds.removeAll();
