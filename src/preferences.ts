@@ -71,15 +71,19 @@ export default class Preferences {
     this.preferenceArgs = undefined;
   }
 
-  getUrl(path: string, qp?: Dictionary) {
-    const urlPath = `${this.config.host}/v2/subscriber/${this.config.distinctId}/${path}`;
+  getUrl(path?: string, qp?: Dictionary) {
+    let urlPath = `${this.config.host}/v1/user/${this.config.distinctId}/preference/`;
+
+    if (path) {
+      urlPath += `${path}/`;
+    }
 
     const validatedQueryParams = this.validateQueryParams(qp);
     const queryParamsString = new URLSearchParams(
       validatedQueryParams
     ).toString();
 
-    return queryParamsString ? `${urlPath}/?${queryParamsString}` : urlPath;
+    return queryParamsString ? `${urlPath}?${queryParamsString}` : urlPath;
   }
 
   /**
@@ -99,7 +103,7 @@ export default class Preferences {
       tags: queryParams?.tags,
       locale: queryParams?.locale,
     };
-    const url = this.getUrl('full_preference', queryParams);
+    const url = this.getUrl(undefined, queryParams);
 
     const response = await this.config.client().request({ type: 'get', url });
 
