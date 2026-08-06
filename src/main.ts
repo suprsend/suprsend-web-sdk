@@ -168,8 +168,16 @@ export default class SuprSend {
     ) {
       this.userToken = userToken;
       this.apiClient = new ApiClient(this);
-      if (options?.refreshUserToken) {
-        this.handleRefreshUserToken(options.refreshUserToken);
+      if (options) {
+        const { tenantId: _tenantId, ...authOptions } = options;
+        this.authenticateOptions = {
+          ...this.authenticateOptions,
+          ...authOptions,
+        };
+      }
+      const refreshCallback = this.authenticateOptions?.refreshUserToken;
+      if (refreshCallback) {
+        this.handleRefreshUserToken(refreshCallback);
       }
       return getResponsePayload({ status: RESPONSE_STATUS.SUCCESS });
     }
@@ -240,11 +248,11 @@ export default class SuprSend {
   }
 
   /**
-   * Used to switch active tenant of identified user. Already running feed instances
+   * Used to switch active tenant of identified user. Already running feed instances and preferences
    * keep the tenant they were initialized with.
    */
-  changeTenant(tenantId: string) {
-    if (!tenantId || typeof tenantId !== 'string') {
+  changeTenant(tenantId: string | null) {
+    if (tenantId !== null && (!tenantId || typeof tenantId !== 'string')) {
       return getResponsePayload({
         status: RESPONSE_STATUS.ERROR,
         errorType: ERROR_TYPE.VALIDATION_ERROR,
@@ -258,7 +266,7 @@ export default class SuprSend {
       );
     }
 
-    this.tenantId = tenantId;
+    this.tenantId = tenantId ?? undefined;
 
     return getResponsePayload({ status: RESPONSE_STATUS.SUCCESS });
   }
