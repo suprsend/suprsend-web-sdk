@@ -45,15 +45,19 @@ Authenticate user so that all the actions performed after authenticating will be
 const authResponse = await suprSendClient.identify(
   distinctId: any,
   userToken?: string, // only needed in production environments for security
-  { refreshUserToken: (oldUserToken: string, tokenPayload: Dictionary) => Promise<string> }
+  {
+    tenantId?: string, // only needed in multi-tenant workspaces
+    refreshUserToken: (oldUserToken: string, tokenPayload: Dictionary) => Promise<string>
+  }
 );
 ```
 
-| Properties       | Description                                                                                                                                                                                                                               |
-| :--------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| distinctId\*     | Unique identifier to identify a user across platform.                                                                                                                                                                                     |
-| userToken        | Mandatory when enhanced security mode is on. This is ES256 JWT token generated in your server-side. Refer [docs](https://docs.suprsend.com/docs/client-authentication#enhanced-security-mode-with-signed-user-token) to create userToken. |
-| refreshUserToken | This function is called by SDK internally to get new userToken before existing token is expired. The returned string is used as the new userToken.                                                                                        |
+| Properties       | Description                                                                                                                                                                                                                                                             |
+| :--------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| distinctId\*     | Unique identifier to identify a user across platform.                                                                                                                                                                                                                   |
+| userToken        | Mandatory when enhanced security mode is on. This is ES256 JWT token generated in your server-side. Refer [docs](https://docs.suprsend.com/docs/client-authentication#enhanced-security-mode-with-signed-user-token) to create userToken.                               |
+| tenantId         | Needed only when your workspace has multiple tenants/brands. Scopes the identified user's activity to that tenant, and is inherited by events, preferences and feed. Its value must match `scope.tenant_id` in the `userToken` payload, else it raises a scoping error. |
+| refreshUserToken | This function is called by SDK internally to get new userToken before existing token is expired. The returned string is used as the new userToken.                                                                                                                      |
 
 ### 3. Reset user
 
@@ -62,6 +66,21 @@ This will remove user data from SuprSend instance similar to logout action.
 ```typescript
 await suprSendClient.reset();
 ```
+
+## Change active tenant
+
+Use the below method to switch the active tenant of identified user. This is meant for users whose `userToken` scopes multiple tenants (`scope.tenant_id` as an array) - identify once and switch between them without resetting the session.
+
+```typescript
+const response = suprSendClient.changeTenant(tenantId: string);
+```
+
+| Properties | Description                                                                                                                                         |
+| :--------- | :-------------------------------------------------------------------------------------------------------------------------------------------------- |
+| tenantId\* | Tenant to switch to. Used by subsequent events, preferences requests and newly initialized feeds. Must be one of the tenants scoped in `userToken`. |
+
+> **Note**
+> Already running feed instances keep the tenant they were initialized with - re-initialize the feed to reflect the new tenant, and call `getPreferences` again to load the new tenant's data.
 
 ## User Methods
 
@@ -107,8 +126,14 @@ await suprSendClient.user.setTimezone(timezone: string)
 ## Triggering Events
 
 ```typescript
-const response = await suprSendClient.track(event: string, properties?: Dictionary)
+const response = await suprSendClient.track(event: string, properties?: Dictionary, options?: {tenantId?: string})
 ```
+
+| Properties | Description                                                                                                                                                                                                                                                          |
+| :--------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| event\*    | Name of the event.                                                                                                                                                                                                                                                   |
+| properties | Properties of the event.                                                                                                                                                                                                                                             |
+| tenantId   | Needed only when your workspace has multiple tenants/brands. Attributes this single event to that tenant. Defaults to the active tenant set in `identify` or [changeTenant](#change-active-tenant). Passing it here doesn't change the active tenant of the session. |
 
 ## Webpush Setup
 
@@ -164,6 +189,8 @@ const updatedPreferencesResp = await suprSendClient.user.preferences.updateChann
 const updatedPreferencesResp = await suprSendClient.user.preferences.updateOverallChannelPreference(channel: string, preference: 'all'|'required');
 ```
 
+`tenantId` defaults to the active tenant set in `identify` or [changeTenant](#change-active-tenant), so you don't need to pass it in every call. Passing it explicitly overrides the active tenant for that call.
+
 All preferences update api's are optimistic updates. Actual api call will happen in background with 1 second debounce. Since its a background task SDK also provides event listener to get updated preference data based on api call status.
 
 ```typescript
@@ -188,6 +215,8 @@ interface IFeedOptions {
   host?: { socketHost?: string; apiHost?: string };
 }
 ```
+
+`tenantId` defaults to the active tenant set in `identify` or [changeTenant](#change-active-tenant), else the `default` tenant. Passing it here overrides the active tenant for that feed instance.
 
 ### Feed Client
 

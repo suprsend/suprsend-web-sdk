@@ -100,6 +100,7 @@ export default class User {
       distinct_id: this.config.distinctId,
       $insert_id: uuid(),
       $time: epochMs(),
+      tenant_id: this.config.tenantId || null,
       ...data,
     });
   }
