@@ -1,0 +1,181 @@
+# Migration guide
+
+## Migrating to v5 from v4
+
+The only change v5 introduces is tenant scoping across the sdk.
+
+### Tenant scoping
+
+Skip this guide if you don't use multi-tenant architecture, i.e. if you don't pass tenant id in userToken jwt payload and don't use tenant id fields for preferences and in-app feed.
+
+Pass `tenantId` in `identify` and the rest of the SDK, including preferences and in-app feed, uses it.
+
+The per-call `tenantId` params in v4 still work and override the global one, so you can migrate gradually or leave your v4 code as is.
+
+```javascript
+// v5
+await suprSendClient.identify(distinctId, userToken, {
+  tenantId: "TENANT_ID",
+});
+
+// inherited — no need to repeat it in v5
+await suprSendClient.user.preferences.getPreferences();
+
+const feedClient = suprSendClient.feeds.initialize();
+```
+
+```javascript
+// v4
+await suprSendClient.identify(distinctId, userToken);
+
+// tenant repeated at every call site
+await suprSendClient.user.preferences.getPreferences({
+  tenantId: "TENANT_ID",
+});
+
+const feedClient = suprSendClient.feeds.initialize({ tenantId: "TENANT_ID" });
+```
+
+**IMPORTANT**: Whichever tenant you pass in sdk, it must be included in `scope.tenant_id` of the [userToken](https://docs.suprsend.com/docs/client-authentication#enhanced-security-mode-with-signed-user-token), else the server throws scoping error.
+
+v5 also adds below methods:
+
+- `changeTenant(tenantId)` to switch the active tenant of an identified user without resetting the session. This is meant for user tokens that scope multiple tenants (`scope.tenant_id` as an array). Already running feed instances and previously fetched preferences keep the tenant they were initialized with — re-initialize the feed and call `getPreferences` again after switching. Refer [docs](../README.md#change-active-tenant).
+- `track(event, properties, { tenantId })` to attribute a single event to a tenant. This doesn't change the active tenant of the session.
+
+## Migrating to v4 from v3
+
+This migration is pretty simple.
+
+- Pagination related meta data keys have been changed in InApp Feed.
+
+```javascript
+// v4
+pageInfo = {
+  total: 0,
+  pageSize: DEFAULT_PAGE_SIZE,
+  hasMore: false, // this key is added in v4
+};
+```
+
+```javascript
+// v3
+pageInfo = {
+  total: 0,
+  currentPage: 0, // this key is removed in v4
+  totalPages: 0, // this key is removed in v4
+  pageSize: DEFAULT_PAGE_SIZE,
+};
+```
+
+## Migrating to v3 from v2
+
+This migration is pretty simple. This version also supports InApp Feed support.
+
+- SuprSend class export has been changed from default export to named export.
+
+```javascript
+// v3
+import { SuprSend } from "@suprsend/web-sdk";
+```
+
+```javascript
+// v2
+import SuprSend from "@suprsend/web-sdk";
+```
+
+## Migrating to v2 from v1
+
+Migrating from v1 to v2 has breaking changes, as we have made some architectural level changes. Refer the v1 SDK [documentation](https://github.com/suprsend/suprsend-browser-sdk/tree/main/docs). Following are changes in detail:
+
+### Authentication changes
+
+In v1, workspace key and workspace secret are used to authenticate requests made to SuprSend which is not so secure.
+
+In v2 we have changed authentication to use public API Key and Signed User Token.
+
+```javascript
+// v2
+const suprSendClient = new SuprSend(publicApiKey);
+
+suprSendClient.idenitfy(distinctId, userToken);
+```
+
+```javascript
+// v1
+suprsend.init(workspace_key, workspace_secret);
+```
+
+### Initializing SDK
+
+v1 used `init` method to initialize SDK and suprsend instance was provided by SDK itself.
+
+In v2 we have provided `SuprSend` class and its clients responsibility to export the class instance and use it in other places to call library methods.
+
+```javascript
+// v2
+export const suprSendClient = new SuprSend(publicApiKey);
+
+suprSendClient.track("test");
+```
+
+```text
+// v1
+suprsend.init(workspace_key, workspace_secret);
+
+suprsend.track("test")
+```
+
+### Synchronous methods
+
+In v1 all methods used to be asynchronous and have returned void. In background SDK used to batch requests and make API calls.
+
+In v2 we have made all requests synchronous so you could access response of API immediately depending of status of API call. Almost all methods including preference methods return response type of [API Response](../README.md#response-structure).
+
+```javascript
+// v2
+const trackResponse = await suprSendClient.track("test");
+
+console.log(trackResponse.status); // success or error
+```
+
+```javascript
+// v1
+const resp = suprsend.track("test"); // resp will be null
+```
+
+### Renamed methods and arguments to camelCase
+
+In v1, all library methods and method parameters are in snake_case which has been changed to camelCase in v2.
+
+```javascript
+// v2 examples
+suprSendClient.user.addEmail();
+suprSendClient.user.preferences.getPreferences({ tenantId: "test" });
+```
+
+```javascript
+// v1 examples
+suprsend.user.add_email();
+suprsend.user.preferences.get_preferences({ tenant_id: "test" });
+```
+
+### Removed `purchase_made` method
+
+In v2 `purchase_made` method has been removed. If you are using this method in v1 you can directly call track method with event type: `$purchase_made`.
+
+```javascript
+// v2
+suprSendClient.track("$purchase_made", { item: "ps5" });
+```
+
+```javascript
+// v1
+suprsend.purchase_made({ item: "ps5" });
+```
+
+### Removed `set_super_properties`
+
+In v2 `set_super_properties` method has been removed. If you are using this method in v1 you could directly pass all these super properties as individual event properties.
+
+After migrating please test all library methods to see if they everything is working properly. If you face any issue in migration process please reach out to us on our [slack community](https://join.slack.com/t/suprsendcommunity/shared_invite/zt-3932rw936-XNWY1RC8bsffh4if4ZyoXQ) or drop an email to us on [support@suprsend.com](mailto:support@suprsend.com)
