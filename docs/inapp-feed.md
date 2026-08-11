@@ -1,0 +1,197 @@
+# InApp Feed
+
+**NOTE:** Refer type definitions for this guide [here](https://github.com/suprsend/suprsend-web-sdk/blob/main/src/interface.ts).
+
+## Initialise feed client
+
+Using SuprSend client instance create Feed client instance.
+
+```typescript
+const feedClient: Feed = suprSendClient.feeds.initialize(options?: IFeedOptions);
+
+interface IFeedOptions {
+  tenantId?: string;
+  pageSize?: number;
+  stores?: IStore[] | null;
+  host?: { socketHost?: string; apiHost?: string };
+}
+```
+
+`tenantId` defaults to the active tenant set in [identify](../README.md#2-authenticate-user) or [changeTenant](../README.md#change-active-tenant), else the `default` tenant. Passing it here overrides the active tenant for that feed instance. Already running feed instances keep the tenant they were initialized with when `changeTenant` is called — re-initialize the feed to reflect the new tenant.
+
+If you are passing `tenant_id` in feed, make sure to pass scope key while creating [userToken](https://docs.suprsend.com/docs/client-authentication#2-creating-signed-user-jwt-token) else error will be thrown due to scope mismatching.
+
+## Feed client
+
+### Get feed data
+
+This returns notification store which contains list of notifications and other meta data like page information etc. You can call this anytime to get updated store data.
+
+```typescript
+const feedData: IFeedData = feedClient.data;
+```
+
+### Initialise socket for realtime update
+
+```typescript
+feedClient.initializeSocketConnection();
+```
+
+### Fetching notification data
+
+This method will get first page of notifications from SuprSend server and set data in notification store.
+
+```typescript
+feedClient.fetch();
+```
+
+### Fetch more notifications
+
+This method will get next page of notifications from SuprSend server and set data in notification store.
+
+```typescript
+feedClient.fetchNextPage();
+```
+
+### Listening for updates to store
+
+Whenever there is update in notification store (ex: on new notification or existing notification state updated) this event is fired by library. You can listen to this event and update your local state so that UI of you application is refreshed.
+
+```typescript
+feedClient.emitter.on("feed.store_update", (updatedStoreData: IFeedData) => {
+  // update your local state to refresh UI
+});
+```
+
+### Listening for new notification
+
+In case you want to show toast notification on receiving new notification you can use this listener.
+
+```typescript
+feedClient.emitter.on(
+  "feed.new_notification",
+  (notificationData: IRemoteNotification) => {
+    // your logic to trigger toast with new notification data
+  }
+);
+```
+
+### Removing feed
+
+This will remove feed client data and abort socket connection. Additionally calling `suprSendClient.reset` method during logout will also remove all feedClient instances attached SuprSend client instance.
+
+```typescript
+feedClient.remove();
+```
+
+### Other methods
+
+```typescript
+// If stores are used, this method will change active store
+feedClient.changeActiveStore(storeId: string)
+
+// Used to reset badge count which is shown on bell icon. This count is latest notifications that user received from the last he opened inbox popup.
+// call this on click of bell icon
+feedClient.resetBadgeCount()
+
+// mark notification as seen
+await feedClient.markAsSeen(notificationId: string)
+
+// mark notification as read
+await feedClient.markAsRead(notificationId: string)
+
+// mark notification as unread
+await feedClient.markAsUnread(notificationId: string)
+
+// mark notification as archived
+await feedClient.markAsArchived(notificationId: string)
+
+// mark notification as interacted
+await feedClient.markAsInteracted(notificationId: string)
+
+// bulk mark all notifications as read
+await feedClient.markAllAsRead()
+
+// bulk mark given notification id's as seen
+await feedClient.markBulkAsSeen(notificationIds: string[])
+```
+
+## Example
+
+For understanding purpose we have added current simple example in react. You could refer this headless example and design the feed in your Angular or Vue.js etc. If you want to implement in react please refer `@suprsend/react-core` or `@suprsend/react`
+
+```jsx
+import { SuprSend } from "@suprsend/web-sdk";
+import { useEffect, useState } from "react";
+
+export default function Example() {
+  const [feedData, setFeedData] = useState();
+  const [feedInstance, setFeedInstance] = useState();
+
+  const initializeFeed = async (suprSendClient) => {
+    await suprSendClient.identify("YOUR_DISTINCT_ID"); // authenticating user
+
+    const feedClient = suprSendClient.feeds.initialize(); // creating feed instance using suprsend client instance
+    setFeedInstance(feedClient); // storing it in state so that feed client methods like markRead can be accessed outside
+    const initialFeedData = feedClient?.data; // get initial store data from feed instance
+    setFeedData(initialFeedData); // storing that data in react state so that UI is rendered accordingly
+
+    feedClient?.emitter.on("feed.store_update", (updatedStoreData) => {
+      setFeedData(updatedStoreData); // register listener to get updated store data and store it in local react state so that UI is updated w.r.t new state
+    });
+
+    feedClient.initializeSocketConnection(); // register for socketio connection for realtime updated in feed data
+    feedClient.fetch(); // fetch existing notifications. Once API call is success you get first page notifications in feed.store_update listener and react state update happens which cause UI to renrender.
+  };
+
+  useEffect(() => {
+    const suprSendClient = new SuprSend("YOUR_PUBLIC_API_KEY"); // creating suprsend client instance
+
+    initializeFeed(suprSendClient);
+
+    return () => suprSendClient.reset(); // up on unmounting remove user so that inbox data will also be cleared
+  }, []);
+
+  if (!feedData) return null;
+  if (feedData.apiStatus === "LOADING") return <p>Loading Data</p>;
+  if (feedData.apiStatus === "SUCCESS" && !feedData?.notifications?.length) {
+    return <p>No Notifications</p>;
+  }
+  if (feedData.notifications) {
+    return (
+      <div>
+        <div>
+          {feedData.notifications.map((notification) => {
+            return (
+              <div
+                key={notification.n_id}
+                onClick={() => {
+                  feedInstance.markAsRead(notification.n_id);
+                }}
+              >
+                {notification.n_id}
+              </div>
+            );
+          })}
+        </div>
+        {feedData.apiStatus === "FETCHING_MORE" ? (
+          <p>Loading More</p>
+        ) : (
+          <div>
+            {feedData.pageInfo.hasMore && (
+              <button
+                onClick={() => {
+                  feedInstance.fetchNextPage();
+                }}
+              >
+                Next
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+  return null;
+}
+```

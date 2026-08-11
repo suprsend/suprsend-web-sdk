@@ -1,15 +1,25 @@
 # SuprSend Javascript Web SDK
 
-This library is used to integrate SuprSend features like WebPush, Preferences and InApp feed in to your javascript client environments.
+This is the client JavaScript SDK used to integrate SuprSend features like Webpush, Preferences in JavaScript websites like React, Next.js, Angular, Vue.js etc.
 
-> 📘 Upgrading major version of SDK
+> 📘 **Upgrading major version of SDK**
 >
-> - Please refer [migration](https://docs.suprsend.com/docs/js-migration-from-v1) guide if you are migrating the major version of SDK.
+> We have changed the web SDK authentication from workspace key-secret to public key and JWT based authentication. This is done to improve security in frontend applications.
+>
+> - Refer the v1 SDK [documentation](https://github.com/suprsend/suprsend-browser-sdk/tree/main/docs)
+> - For migrating to v2, follow this [guide](docs/migration-guide.md)
+
+[NPM Link](https://www.npmjs.com/package/@suprsend/web-sdk) | [GitHub Link](https://github.com/suprsend/suprsend-web-sdk)
 
 ## Documentation
 
-- Checkout detailed [documentation](https://docs.suprsend.com/docs/javascript-sdk) for this library.
-- Refer type definitions for this library [here](https://github.com/suprsend/suprsend-web-sdk/blob/main/src/interface.ts).
+- [WebPush](docs/webpush.md)
+- [Events and User methods](docs/events-and-user-methods.md)
+- [Preferences](docs/preferences.md)
+- [InApp Feed](docs/inapp-feed.md)
+- [Migration guide](docs/migration-guide.md)
+
+Checkout detailed [documentation](https://docs.suprsend.com/docs/integrate-javascript-sdk) for this library. Refer type definitions for this library [here](https://github.com/suprsend/suprsend-web-sdk/blob/main/src/interface.ts).
 
 ## Installation
 
@@ -28,18 +38,18 @@ yarn add @suprsend/web-sdk@latest
 Create suprSendClient instance and use same instance to access all the methods of SuprSend library.
 
 ```typescript
-import {SuprSend} from '@suprsend/web-sdk';
+import { SuprSend } from '@suprsend/web-sdk';
 
 export const suprSendClient = new SuprSend(publicApiKey: string);
 ```
 
 | Params         | Description                                                                                                                    |
 | :------------- | :----------------------------------------------------------------------------------------------------------------------------- |
-| publicApiKey\* | This is public Key used to authenticate api calls to SuprSend. Get it in SuprSend dashboard **ApiKeys -> Public Keys** section |
+| publicApiKey\* | This is public Key used to authenticate API calls to SuprSend. Get it in SuprSend dashboard **ApiKeys -> Public Keys** section |
 
-### 2. Authenticate user
+### 2. Authenticate User
 
-Authenticate user so that all the actions performed after authenticating will be w.r.t that user. This is mandatory step and need to be called before using any other method. This is usually performed after successful login and on reload of page to re-authenticate user (can be changed based on your requirement).
+Authenticate user so that all the actions performed after authenticating will be w.r.t that user. This is mandatory step and need to be called before using any other method. This is usually performed after successful login and on reload of page to re-authenticate user.
 
 ```typescript
 const authResponse = await suprSendClient.identify(
@@ -56,20 +66,32 @@ const authResponse = await suprSendClient.identify(
 | :--------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | distinctId\*     | Unique identifier to identify a user across platform.                                                                                                                                                                                                                   |
 | userToken        | Mandatory when enhanced security mode is on. This is ES256 JWT token generated in your server-side. Refer [docs](https://docs.suprsend.com/docs/client-authentication#enhanced-security-mode-with-signed-user-token) to create userToken.                               |
-| tenantId         | Needed only when your workspace has multiple tenants/brands. Scopes the identified user's activity to that tenant, and is inherited by events, preferences and feed. Its value must match `scope.tenant_id` in the `userToken` payload, else it raises a scoping error. |
+| tenantId         | Needed only when your workspace has multiple tenants. Scopes the identified user's activity to that tenant, and is inherited by events, preferences and in-app feed. Its value must match `scope.tenant_id` in the `userToken` payload, else it raises a scoping error. |
 | refreshUserToken | This function is called by SDK internally to get new userToken before existing token is expired. The returned string is used as the new userToken.                                                                                                                      |
+
+**Returns:** `Promise<ApiResponse>`
+
+#### 2.1 Check if user is authenticated
+
+This method will check if user is authenticated i.e. `distinctId` is attached to SuprSend instance. To check for userToken also pass checkUserToken flag true.
+
+```typescript
+suprSendClient.isIdentified(checkUserToken?: boolean): boolean
+```
 
 ### 3. Reset user
 
-This will remove user data from SuprSend instance similar to logout action.
+This will remove user data from SuprSend instance. This is usually called on logout action.
 
 ```typescript
 await suprSendClient.reset();
 ```
 
+**Returns:** `Promise<ApiResponse>`
+
 ## Change active tenant
 
-Use the below method to switch the active tenant of identified user. This is meant for users whose `userToken` scopes multiple tenants (`scope.tenant_id` as an array) - identify once and switch between them without resetting the session.
+Once a tenant is set in `identify`, all SDK calls (events, preferences, in-app feed) are scoped to the active tenant. Use this method to switch the active tenant of an identified user. This is meant for users whose `userToken` scopes multiple tenants (`scope.tenant_id` as an array) — identify once and switch between tenants without resetting the session.
 
 ```typescript
 const response = suprSendClient.changeTenant(tenantId: string);
@@ -77,245 +99,17 @@ const response = suprSendClient.changeTenant(tenantId: string);
 
 | Properties | Description                                                                                                                                         |
 | :--------- | :-------------------------------------------------------------------------------------------------------------------------------------------------- |
-| tenantId\* | Tenant to switch to. Used by subsequent events, preferences requests and newly initialized feeds. Must be one of the tenants scoped in `userToken`. |
+| tenantId\* | Tenant to switch to. Used by subsequent events and newly initialized preferences and feed requests. Must be one of the tenants scoped in `userToken`. |
+
+**Returns:** `ApiResponse`
 
 > **Note**
-> Already running feed instances keep the tenant they were initialized with - re-initialize the feed to reflect the new tenant, and call `getPreferences` again to load the new tenant's data.
+>
+> Already running feed instances and previously fetched preferences keep the tenant they were initialized with when `changeTenant` is called. Re-initialize the feed and call `getPreferences` again to load data for the new tenant.
 
-## User Methods
+## Response structure
 
-Use these methods to manipulate user properties and notification channel data of user
-
-```typescript
-await suprSendClient.user.addEmail(email: string)
-await suprSendClient.user.removeEmail(email: string)
-
-// mobile should be as per E.164 standard
-await suprSendClient.user.addSms(mobile: string)
-await suprSendClient.user.removeSms(mobile: string)
-
-// mobile should be as per E.164 standard
-await suprSendClient.user.addWhatsapp(mobile: string)
-await suprSendClient.user.removeWhatsapp(mobile: string)
-
-// set custom user properties
-await suprSendClient.user.set(arg1: string | Dictionary, arg2?: unknown)
-
-// set properties only once that cannot be overridden
-await suprSendClient.user.setOnce(arg1: string | Dictionary, arg2?: unknown)
-
-// increase or decrease property by given value
-await suprSendClient.user.increment(arg1: string | Dictionary, arg2?: number)
-
-// Add items to list if user property is list
-await suprSend.user.append(arg1: string | Dictionary, arg2?: unknown)
-
-// Remove items from list if user property is list.
-await suprSend.user.remove(arg1: string | Dictionary, arg2?: unknown)
-
-// remove user property. If channel needs to be removed pass $email, $sms, $whatsapp
-await suprSend.user.unset(arg: string | string[])
-
-//2-letter language code in "ISO 639-1 Alpha-2" format e.g. en (for English)
-await suprSendClient.user.setPreferredLanguage(language: string)
-
-// set timezone property at user level in IANA timezone format
-await suprSendClient.user.setTimezone(timezone: string)
-```
-
-## Triggering Events
-
-```typescript
-const response = await suprSendClient.track(event: string, properties?: Dictionary, options?: {tenantId?: string})
-```
-
-| Properties | Description                                                                                                                                                                                                                                                          |
-| :--------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| event\*    | Name of the event.                                                                                                                                                                                                                                                   |
-| properties | Properties of the event.                                                                                                                                                                                                                                             |
-| tenantId   | Needed only when your workspace has multiple tenants/brands. Attributes this single event to that tenant. Defaults to the active tenant set in `identify` or [changeTenant](#change-active-tenant). Passing it here doesn't change the active tenant of the session. |
-
-## Webpush Setup
-
-### 1. Configuration
-
-While creating SuprSend instance you have to pass vapidKey (get it in SuprSend Dashboard --> Vendors --> WebPush).
-
-If you want to customise serviceworker file name instead of `serviceworker.js`, you can pass name of it in `swFileName`.
-
-```typescript
-new SuprSend(publicApiKey: string, {vapidKey?: string, swFileName?: string})
-```
-
-### 2. Add ServiceWorker file
-
-Service worker file is the background worker script which handles push notifications.
-
-Create `serviceworker.js` file such that it should be publicly accessible from `https://<your_domain>/serviceworker.js`. Then include below lines of code and replace publicApiKey with key you find in API Keys page in SuprSend Dashboard.
-
-```javascript
-importScripts(
-  'https://cdn.jsdelivr.net/npm/@suprsend/web-sdk@3.0.3/public/serviceworker.min.js'
-);
-
-initSuprSend(publicApiKey);
-```
-
-### 3. Register Push
-
-Call `registerPush` in your code, which will perform following tasks:
-
-- Ask for notification permission.
-- Register push service and generate webpush token.
-- Send webpush token to SuprSend.
-
-```typescript
-const response = await suprSendClient.webpush.registerPush();
-```
-
-## Preferences
-
-```typescript
-// get full user preferences data
-const preferencesResp = await suprSendClient.user.preferences.getPreferences(args?: {tenantId?: string, tags?: string | Dictionary, locale?: string });
-
-// update category level preference
-const updatedPreferencesResp = await suprSendClient.user.preferences.updateCategoryPreference(category: string, preference: 'opt_in'|'opt_out');
-
-// update category level channel preference
-const updatedPreferencesResp = await suprSendClient.user.preferences.updateChannelPreferenceInCategory(channel: string, preference: 'opt_in'|'opt_out', category: string);
-
-// update overall channel level preference
-const updatedPreferencesResp = await suprSendClient.user.preferences.updateOverallChannelPreference(channel: string, preference: 'all'|'required');
-```
-
-`tenantId` defaults to the active tenant set in `identify` or [changeTenant](#change-active-tenant), so you don't need to pass it in every call. Passing it explicitly overrides the active tenant for that call.
-
-All preferences update api's are optimistic updates. Actual api call will happen in background with 1 second debounce. Since its a background task SDK also provides event listener to get updated preference data based on api call status.
-
-```typescript
-// listen for update in preferences data and update your UI accordingly in callback
-suprSendClient.emitter.on('preferences_updated', (preferenceDataResp) => void);
-
-// listen for errors and show error state like toast etc
-suprSendClient.emitter.on('preferences_error', (errorResp) => void);
-```
-
-## InApp Feed
-
-### Initialise feed client
-
-```typescript
-const feedClient: Feed = suprSendClient.feed.initialize(options?: IFeedOptions);
-
-interface IFeedOptions {
-  tenantId?: string;
-  pageSize?: number;
-  stores?: IStore[] | null;
-  host?: { socketHost?: string; apiHost?: string };
-}
-```
-
-`tenantId` defaults to the active tenant set in `identify` or [changeTenant](#change-active-tenant), else the `default` tenant. Passing it here overrides the active tenant for that feed instance.
-
-### Feed Client
-
-#### Get Feed Data
-
-This returns notification store which contains list of notifications and other meta data like page information etc. You can call this anytime to get updated store data.
-
-```typescript
-const feedData: IFeedData = feedClient.data;
-```
-
-#### Initialize socket for realtime update
-
-```typescript
-feedClient.initializeSocketConnection();
-```
-
-#### Fetching notification data
-
-This method will get first page of notifications from SuprSend server and set data in notification store.
-
-```typescript
-feedClient.fetch();
-```
-
-#### Fetch more notifications
-
-This method will get next page of notifications from SuprSend server and set data in notification store.
-
-```typescript
-feedClient.fetchNextPage();
-```
-
-#### Listening for updates to store
-
-Whenever there is update in notification store (ex: on new notification or existing notification state updated) this event is fired by library. You can listen to this event and update your local state so that UI of you application is refreshed.
-
-```typescript
-feedClient.emitter.on('feed.store_update', (updatedStoreData: IFeedData) => {
-  // update your local state to refresh UI
-});
-```
-
-#### Listening for new notification
-
-In case you want to show toast notification on receiving new notification you can use this listener
-
-```typescript
-feedClient.emitter.on(
-  'feed.new_notification',
-  (notificationData: IRemoteNotification) => {
-    // your logic to trigger toast with new notification data
-  }
-);
-```
-
-#### Removing Feed
-
-This will remove feed client data and abort socket connection. Additionally calling `suprSendClient.reset` method during logout will also remove all feedClient instances attached SuprSend client instance.
-
-```typescript
-feedClient.remove();
-```
-
-#### Other methods
-
-```typescript
-// If stores are used, this method will change active store
-feedClient.changeActiveStore(storeId: string)
-
-// Used to reset badge count which is shown on bell icon. This count is latest notifications that user received from the last he opened inbox popup.
-// call this on click of bell icon
-feedClient.resetBadgeCount()
-
-// mark notification as seen
-await feedClient.markAsSeen(notificationId: string)
-
-// mark notification as read
-await feedClient.markAsRead(notificationId: string)
-
-// mark notification as unread
-await feedClient.markAsUnread(notificationId: string)
-
-// mark notification as archived
-await feedClient.markAsArchived(notificationId: string)
-
-// mark notification as interacted
-await feedClient.markAsInteracted(notificationId: string)
-
-// bulk mark all notifications as read
-await feedClient.markAllAsRead()
-
-// bulk mark given notification id's as seen
-await feedClient.markBulkAsSeen(notificationIds: string[])
-```
-
-## Response Structure
-
-Most of the methods in this library return `Promise<ApiResponse>`
+Almost all the methods in this SDK return response type `Promise<ApiResponse>`
 
 ```typescript
 interface ApiResponse {
