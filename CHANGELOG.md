@@ -1,5 +1,19 @@
 # Changelog
 
+## 5.1.0
+
+### Changed
+
+- `userToken` is now refreshed on-demand before each api call (when expired or within 30 seconds of expiry) instead of via a background timer, so refreshes aren't missed in inactive or throttled tabs. Concurrent calls share a single refresh.
+- The in-app feed socket reuses the same refresh flow on connection errors and reconnects with the refreshed token.
+- Token refresh failures now log a warning instead of failing silently.
+
+### Notes
+
+- No integration changes are needed.
+
+[5.1.0]: https://github.com/suprsend/suprsend-web-sdk/compare/v5.0.0...v5.1.0
+
 ## 5.0.0
 
 ### Added
