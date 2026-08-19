@@ -10,5 +10,13 @@ export default tseslint.config(
   {
     ignores: ['node_modules', 'dist'],
   },
+  {
+    rules: {
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        { caughtErrors: 'none', ignoreRestSiblings: true },
+      ],
+    },
+  },
   prettierConfig // should be at end
 );

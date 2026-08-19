@@ -67,7 +67,7 @@ const authResponse = await suprSendClient.identify(
 | distinctId\*     | Unique identifier to identify a user across platform.                                                                                                                                                                                                                   |
 | userToken        | Mandatory when enhanced security mode is on. This is ES256 JWT token generated in your server-side. Refer [docs](https://docs.suprsend.com/docs/client-authentication#enhanced-security-mode-with-signed-user-token) to create userToken.                               |
 | tenantId         | Needed only when your workspace has multiple tenants. Scopes the identified user's activity to that tenant, and is inherited by events, preferences and in-app feed. Its value must match `scope.tenant_id` in the `userToken` payload, else it raises a scoping error. |
-| refreshUserToken | This function is called by SDK internally to get new userToken before existing token is expired. The returned string is used as the new userToken.                                                                                                                      |
+| refreshUserToken | This function is called by SDK internally to get new userToken when existing token is expired or about to expire, before making any api call. The returned string is used as the new userToken.                                                                        |
 
 **Returns:** `Promise<ApiResponse>`
 

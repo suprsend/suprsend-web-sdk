@@ -1,6 +1,6 @@
 {
   "name": "@suprsend/web-sdk",
-  "version": "5.0.0",
+  "version": "5.1.0",
   "description": "The client side javascript library for interacting with SuprSend",
   "author": "SuprSend Developers",
   "type": "module",
@@ -47,7 +47,7 @@
     "prettier": "^3.3.3",
     "rimraf": "4.4.1",
     "typescript": "^5.5.3",
-    "typescript-eslint": "^7.16.1",
+    "typescript-eslint": "^8",
     "vite": "^6.4.2",
     "vite-plugin-dts": "^4.5.4"
   },

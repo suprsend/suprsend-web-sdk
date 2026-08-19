@@ -10,6 +10,7 @@ import { getResponsePayload } from './utils';
 
 export default class ApiClient {
   private config: SuprSend;
+  private userTokenRefreshInflight: Promise<void> | null = null;
 
   constructor(config: SuprSend) {
     this.config = config;
@@ -71,6 +72,49 @@ export default class ApiClient {
     });
   }
 
+  async refreshExpiringUserToken() {
+    const userToken = this.config.userToken;
+    const refreshUserToken = this.config.authenticateOptions?.refreshUserToken;
+    if (!userToken || !refreshUserToken) return;
+
+    let jwtPayload: Dictionary;
+    try {
+      jwtPayload = jwt_decode(userToken) as Dictionary;
+    } catch (e) {
+      return;
+    }
+
+    if (!jwtPayload.exp) return;
+
+    const expiresOn = ((jwtPayload.exp as number) || 0) * 1000; // in ms
+    const now = Date.now(); // in ms
+    const refreshBefore = 1000 * 30; // refresh token before 30sec of expiry
+    const isExpiring = expiresOn - refreshBefore <= now;
+    if (!isExpiring) return;
+
+    if (!this.userTokenRefreshInflight) {
+      this.userTokenRefreshInflight = (async () => {
+        try {
+          const newUserToken = await refreshUserToken(userToken, jwtPayload);
+
+          if (newUserToken && typeof newUserToken === 'string') {
+            await this.config.identify(
+              this.config.distinctId,
+              newUserToken,
+              this.config.authenticateOptions
+            );
+          }
+        } catch (e) {
+          console.warn("[SuprSend]: Couldn't fetch new userToken", e);
+        } finally {
+          this.userTokenRefreshInflight = null;
+        }
+      })();
+    }
+
+    await this.userTokenRefreshInflight;
+  }
+
   async request(reqData: HandleRequest) {
     if (!this.config.distinctId) {
       return getResponsePayload({
@@ -81,34 +125,7 @@ export default class ApiClient {
       });
     }
 
-    if (
-      this.config.authenticateOptions?.refreshUserToken &&
-      this.config.userToken
-    ) {
-      const jwtPayload = jwt_decode(this.config.userToken) as Dictionary;
-      const expiresOn = ((jwtPayload.exp as number) || 0) * 1000; // in ms
-      const now = Date.now(); // in ms
-      const hasExpired = expiresOn <= now;
-      if (hasExpired) {
-        try {
-          const newUserToken =
-            await this.config.authenticateOptions.refreshUserToken(
-              this.config.userToken,
-              jwtPayload
-            );
-
-          if (newUserToken && typeof newUserToken === 'string') {
-            this.config.identify(
-              this.config.distinctId,
-              newUserToken,
-              this.config.authenticateOptions
-            );
-          }
-        } catch (e) {
-          // error while getting token go ahead with calling api
-        }
-      }
-    }
+    await this.refreshExpiringUserToken();
 
     try {
       const resp = await this.requestApiInstance(reqData);

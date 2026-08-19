@@ -1,11 +1,9 @@
 import mitt, { Emitter } from 'mitt';
-import jwt_decode from 'jwt-decode';
 import {
   SuprSendOptions,
   Dictionary,
   EmitterEvents,
   AuthenticateOptions,
-  RefreshTokenCallback,
   ERROR_TYPE,
   RESPONSE_STATUS,
   ApiResponse,
@@ -16,7 +14,6 @@ import ApiClient from './api';
 import {
   uuid,
   epochMs,
-  windowSupport,
   getResponsePayload,
   getLocalStorageData,
   setLocalStorageData,
@@ -43,8 +40,7 @@ export default class SuprSend {
   public clientUserAgent: ClientUserAgentConfig;
   public userAgent: string;
   private apiClient: ApiClient | null = null;
-  private userTokenExpirationTimer: ReturnType<typeof setTimeout> | null = null;
-  public authenticateOptions?: AuthenticateOptions;
+  public authenticateOptions?: Omit<AuthenticateOptions, 'tenantId'>;
 
   readonly user = new User(this);
   readonly webpush = new WebPush(this);
@@ -65,46 +61,6 @@ export default class SuprSend {
       options?.clientUserAgent
     );
     this.userAgent = buildUserAgent(this.clientUserAgent);
-  }
-
-  private handleRefreshUserToken(refreshUserToken: RefreshTokenCallback) {
-    if (!this.userToken || !windowSupport()) return;
-
-    const jwtPayload = jwt_decode(this.userToken) as Dictionary;
-    const expiresOn = ((jwtPayload.exp as number) || 0) * 1000; // in ms
-    const now = Date.now(); // in ms
-    const refreshBefore = 1000 * 30; // call refresh api before 30sec of expiry
-
-    if (expiresOn && expiresOn > now) {
-      const timeDiff = expiresOn - now - refreshBefore;
-
-      if (this.userTokenExpirationTimer) {
-        clearTimeout(this.userTokenExpirationTimer);
-      }
-      this.userTokenExpirationTimer = setTimeout(async () => {
-        let newToken = '';
-        try {
-          newToken = await refreshUserToken(
-            this.userToken as string,
-            jwtPayload
-          );
-        } catch (e) {
-          // retry fetching token
-          try {
-            newToken = await refreshUserToken(
-              this.userToken as string,
-              jwtPayload
-            );
-          } catch (e) {
-            console.warn("[SuprSend]: Couldn't fetch new userToken", e);
-          }
-        }
-
-        if (newToken && typeof newToken === 'string') {
-          this.identify(this.distinctId, newToken, this.authenticateOptions);
-        }
-      }, timeDiff);
-    }
   }
 
   client() {
@@ -175,10 +131,6 @@ export default class SuprSend {
           ...authOptions,
         };
       }
-      const refreshCallback = this.authenticateOptions?.refreshUserToken;
-      if (refreshCallback) {
-        this.handleRefreshUserToken(refreshCallback);
-      }
       return getResponsePayload({ status: RESPONSE_STATUS.SUCCESS });
     }
 
@@ -195,10 +147,6 @@ export default class SuprSend {
     const authenticatedDistinctId = getLocalStorageData(
       AUTHENTICATED_DISTINCT_ID
     );
-
-    if (options?.refreshUserToken) {
-      this.handleRefreshUserToken(options.refreshUserToken);
-    }
 
     // already loggedin
     if (authenticatedDistinctId == this.distinctId) {
@@ -315,10 +263,6 @@ export default class SuprSend {
     this.userToken = '';
     this.tenantId = undefined;
     // removeLocalStorageData(AUTHENTICATED_DISTINCT_ID);
-
-    if (this.userTokenExpirationTimer) {
-      clearTimeout(this.userTokenExpirationTimer);
-    }
 
     this.user.preferences.reset();
 

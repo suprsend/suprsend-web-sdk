@@ -1,6 +1,5 @@
 import { createStore, StoreApi } from 'zustand/vanilla';
 import { io, Socket } from 'socket.io-client';
-import jwt_decode from 'jwt-decode';
 import mitt, { Emitter } from 'mitt';
 import SuprSend from './main';
 import {
@@ -193,32 +192,17 @@ export class Feed {
         this.config.authenticateOptions?.refreshUserToken &&
         this.config.userToken
       ) {
-        const userToken = this.socket.auth['x-ss-signature'];
-        const jwtPayload = jwt_decode(userToken) as Dictionary;
-        const expiresOn = ((jwtPayload.exp as number) || 0) * 1000; // in ms
-        const now = Date.now(); // in ms
-        const hasExpired = expiresOn <= now;
-        if (hasExpired) {
-          try {
-            const newUserToken =
-              await this.config.authenticateOptions.refreshUserToken(
-                this.config.userToken,
-                jwtPayload
-              );
-            if (newUserToken && typeof newUserToken === 'string') {
-              await this.config.identify(
-                this.config.distinctId,
-                newUserToken,
-                this.config.authenticateOptions
-              );
-              this.socket.auth['x-ss-signature'] = newUserToken;
-              setTimeout(() => {
-                this.socket.connect();
-              }, 1000);
-            }
-          } catch (e) {
-            // error while getting token go ahead with calling api
-          }
+        await this.config.client().refreshExpiringUserToken();
+
+        const latestUserToken = this.config.userToken;
+        if (
+          latestUserToken &&
+          this.socket.auth['x-ss-signature'] !== latestUserToken
+        ) {
+          this.socket.auth['x-ss-signature'] = latestUserToken;
+          setTimeout(() => {
+            this.socket.connect();
+          }, 1000);
         }
       }
     });
