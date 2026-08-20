@@ -165,6 +165,7 @@ export enum EditPolicy {
 
 export interface ChoiceItem {
   label: string;
+  // eslint-disable-next-line
   value: any;
 }
 
@@ -338,7 +339,7 @@ export interface INotificationStore {
   isFirstFetch: boolean;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-empty-interface
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface IFeedData extends Omit<
   INotificationStore,
   '_firstFetchedTimeStamp'
