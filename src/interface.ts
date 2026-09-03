@@ -42,6 +42,12 @@ export interface TrackOptions {
   tenantId?: string;
 }
 
+export type PushTokenAction = 'none' | 'copy' | 'move';
+
+export interface ChangeTenantOptions {
+  pushTokenAction?: PushTokenAction;
+}
+
 export interface ResponseOptions {
   status: RESPONSE_STATUS.ERROR | RESPONSE_STATUS.SUCCESS;
   statusCode?: number;
