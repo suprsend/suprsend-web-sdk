@@ -9,6 +9,8 @@ import {
   ApiResponse,
   ClientUserAgentConfig,
   TrackOptions,
+  ChangeTenantOptions,
+  PushTokenAction,
 } from './interface';
 import ApiClient from './api';
 import {
@@ -28,6 +30,7 @@ import FeedsFactory from './feed';
 const DEFAULT_HOST = 'https://hub.suprsend.com';
 const DEFAULT_SW_FILENAME = 'serviceworker.js';
 const AUTHENTICATED_DISTINCT_ID = 'ss_distinct_id';
+const PUSH_TOKEN_ACTIONS: PushTokenAction[] = ['none', 'copy', 'move'];
 
 export default class SuprSend {
   public host: string;
@@ -150,9 +153,7 @@ export default class SuprSend {
 
     // already loggedin
     if (authenticatedDistinctId == this.distinctId) {
-      this.webpush.updatePushSubscription().catch(() => {
-        // pass
-      });
+      this.webpush.updatePushSubscription();
       return getResponsePayload({ status: RESPONSE_STATUS.SUCCESS });
     }
 
@@ -175,9 +176,7 @@ export default class SuprSend {
 
     if (resp.status === RESPONSE_STATUS.SUCCESS) {
       // store user so that other method calls dont need api calls
-      this.webpush.updatePushSubscription().catch(() => {
-        // pass
-      });
+      this.webpush.updatePushSubscription();
       setLocalStorageData(AUTHENTICATED_DISTINCT_ID, this.distinctId as string);
     } else {
       // reset user data so that user can retry
@@ -197,14 +196,25 @@ export default class SuprSend {
 
   /**
    * Used to switch active tenant of identified user. Already running feed instances and preferences
-   * keep the tenant they were initialized with.
+   * keep the tenant they were initialized with. Pass pushTokenAction in options to control the
+   * webpush subscription: 'none' leaves it attached to the current tenant, 'copy' attaches it to the
+   * new tenant as well, 'move' detaches it from the current tenant and attaches it to the new tenant.
    */
-  changeTenant(tenantId: string | null) {
+  async changeTenant(tenantId: string | null, options?: ChangeTenantOptions) {
     if (tenantId !== null && (!tenantId || typeof tenantId !== 'string')) {
       return getResponsePayload({
         status: RESPONSE_STATUS.ERROR,
         errorType: ERROR_TYPE.VALIDATION_ERROR,
         errorMessage: 'tenantId is missing or invalid',
+      });
+    }
+
+    const pushTokenAction = options?.pushTokenAction ?? 'none';
+    if (!PUSH_TOKEN_ACTIONS.includes(pushTokenAction)) {
+      return getResponsePayload({
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.VALIDATION_ERROR,
+        errorMessage: "pushTokenAction must be one of 'none', 'copy' or 'move'",
       });
     }
 
@@ -214,7 +224,34 @@ export default class SuprSend {
       );
     }
 
-    this.tenantId = tenantId ?? undefined;
+    const oldTenantId = this.tenantId;
+    const newTenantId = tenantId ?? undefined;
+    const attachPush =
+      pushTokenAction !== 'none' &&
+      this.isIdentified() &&
+      oldTenantId !== newTenantId &&
+      (await this.webpush.pushSubscribed());
+
+    if (attachPush && pushTokenAction === 'move') {
+      const removeResp = await this.webpush.removePushSubscription();
+      if (removeResp?.status === RESPONSE_STATUS.ERROR) {
+        return removeResp;
+      }
+      removeLocalStorageData(SUPRSEND_ENDPOINT_KEY);
+    }
+
+    this.tenantId = newTenantId;
+
+    if (attachPush) {
+      const updateResp = await this.webpush.updatePushSubscription();
+      if (updateResp?.status === RESPONSE_STATUS.ERROR) {
+        this.tenantId = oldTenantId;
+        if (pushTokenAction === 'move') {
+          await this.webpush.updatePushSubscription();
+        }
+        return updateResp;
+      }
+    }
 
     return getResponsePayload({ status: RESPONSE_STATUS.SUCCESS });
   }

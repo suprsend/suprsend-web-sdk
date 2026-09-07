@@ -21,29 +21,37 @@ export default class WebPush {
   private async getPushSubscription() {
     if (!windowSupport() || !('serviceWorker' in navigator)) return;
 
-    const registration = await navigator.serviceWorker.getRegistration();
-    if (!registration) return;
+    try {
+      const registration = await navigator.serviceWorker.getRegistration();
+      if (!registration) return;
 
-    const subscription = await registration.pushManager.getSubscription();
-    if (!subscription) return;
-    return subscription;
+      const subscription = await registration.pushManager.getSubscription();
+      if (!subscription) return;
+      return subscription;
+    } catch (e) {
+      console.warn('[SuprSend]: Error getting push subscription', e);
+      return;
+    }
   }
 
   private async checkAndUpdateOnServer(subscription: PushSubscription) {
-    const endpoint = subscription.endpoint;
+    const hashInput = `${subscription.endpoint}::${this.config.distinctId}::${
+      this.config.tenantId || ''
+    }`;
     let hash: string | null = null;
     try {
-      hash = await sha256Hash(endpoint);
+      hash = await sha256Hash(hashInput);
     } catch (e) {
       // pass
     }
-    if (hash) {
-      if (hash === getLocalStorageData(SUPRSEND_ENDPOINT_KEY)) {
-        return getResponsePayload({ status: RESPONSE_STATUS.SUCCESS });
-      }
+    if (hash && hash === getLocalStorageData(SUPRSEND_ENDPOINT_KEY)) {
+      return getResponsePayload({ status: RESPONSE_STATUS.SUCCESS });
+    }
+    const resp = await this.config.user.addWebPush(subscription);
+    if (hash && resp?.status === RESPONSE_STATUS.SUCCESS) {
       setLocalStorageData(SUPRSEND_ENDPOINT_KEY, hash);
     }
-    return await this.config.user.addWebPush(subscription);
+    return resp;
   }
 
   private async handleRegisterPush() {
@@ -130,16 +138,26 @@ export default class WebPush {
 
   async updatePushSubscription() {
     const subscription = await this.getPushSubscription();
-    if (subscription) {
-      return this.checkAndUpdateOnServer(subscription);
+    if (!subscription) {
+      return getResponsePayload({
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.NOT_FOUND,
+        errorMessage: 'Push subscription not found',
+      });
     }
+    return this.checkAndUpdateOnServer(subscription);
   }
 
   async removePushSubscription() {
     const subscription = await this.getPushSubscription();
-    if (subscription) {
-      return this.config.user.removeWebPush(subscription);
+    if (!subscription) {
+      return getResponsePayload({
+        status: RESPONSE_STATUS.ERROR,
+        errorType: ERROR_TYPE.NOT_FOUND,
+        errorMessage: 'Push subscription not found',
+      });
     }
+    return this.config.user.removeWebPush(subscription);
   }
 
   /**

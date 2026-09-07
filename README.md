@@ -67,7 +67,7 @@ const authResponse = await suprSendClient.identify(
 | distinctId\*     | Unique identifier to identify a user across platform.                                                                                                                                                                                                                   |
 | userToken        | Mandatory when enhanced security mode is on. This is ES256 JWT token generated in your server-side. Refer [docs](https://docs.suprsend.com/docs/client-authentication#enhanced-security-mode-with-signed-user-token) to create userToken.                               |
 | tenantId         | Needed only when your workspace has multiple tenants. Scopes the identified user's activity to that tenant, and is inherited by events, preferences and in-app feed. Its value must match `scope.tenant_id` in the `userToken` payload, else it raises a scoping error. |
-| refreshUserToken | This function is called by SDK internally to get new userToken when existing token is expired or about to expire, before making any api call. The returned string is used as the new userToken.                                                                        |
+| refreshUserToken | This function is called by SDK internally to get new userToken when existing token is expired or about to expire, before making any api call. The returned string is used as the new userToken.                                                                         |
 
 **Returns:** `Promise<ApiResponse>`
 
@@ -94,18 +94,21 @@ await suprSendClient.reset();
 Once a tenant is set in `identify`, all SDK calls (events, preferences, in-app feed) are scoped to the active tenant. Use this method to switch the active tenant of an identified user. This is meant for users whose `userToken` scopes multiple tenants (`scope.tenant_id` as an array) — identify once and switch between tenants without resetting the session.
 
 ```typescript
-const response = suprSendClient.changeTenant(tenantId: string);
+const response = await suprSendClient.changeTenant(tenantId: string, options?: { pushTokenAction?: 'none' | 'copy' | 'move' });
 ```
 
-| Properties | Description                                                                                                                                         |
-| :--------- | :-------------------------------------------------------------------------------------------------------------------------------------------------- |
-| tenantId\* | Tenant to switch to. Used by subsequent events and newly initialized preferences and feed requests. Must be one of the tenants scoped in `userToken`. |
+| Properties      | Description                                                                                                                                                                                                                               |
+| :-------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| tenantId\*      | Tenant to switch to. Used by subsequent events and newly initialized preferences and feed requests. Must be one of the tenants scoped in `userToken`.                                                                                     |
+| pushTokenAction | What to do with the existing webpush subscription. `none` (default) leaves it attached to the current tenant. `copy` attaches it to the new tenant as well. `move` detaches it from the current tenant and attaches it to the new tenant. |
 
-**Returns:** `ApiResponse`
+**Returns:** `Promise<ApiResponse>`
 
 > **Note**
 >
 > Already running feed instances and previously fetched preferences keep the tenant they were initialized with when `changeTenant` is called. Re-initialize the feed and call `getPreferences` again to load data for the new tenant.
+>
+> With `copy` or `move`, if the device has no webpush subscription the tenant switch still succeeds. If attaching the subscription to the new tenant fails, the active tenant is restored (and re-attached for `move`) and the error is returned.
 
 ## Response structure
 

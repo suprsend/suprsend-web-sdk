@@ -1,5 +1,21 @@
 # Changelog
 
+## 5.2.0
+
+### Added
+
+- `changeTenant()` now accepts an options object with `pushTokenAction` (`'none' | 'copy' | 'move'`, defaults to `'none'`). `copy` attaches the existing webpush subscription to the new tenant while keeping it on the current tenant. `move` detaches it from the current tenant and attaches it to the new tenant. If attaching to the new tenant fails, the active tenant is restored and the error is returned. If the device has no push subscription, the tenant switch still succeeds.
+
+### Changed
+
+- `changeTenant()` is now async and returns `Promise<ApiResponse>` instead of `ApiResponse`. Await it if you rely on the response.
+
+### Notes
+
+- With the default `pushTokenAction: 'none'`, `changeTenant()` behaves as before and the webpush subscription stays attached to the previous tenant.
+
+[5.2.0]: https://github.com/suprsend/suprsend-web-sdk/compare/v5.1.0...v5.2.0
+
 ## 5.1.0
 
 ### Changed
