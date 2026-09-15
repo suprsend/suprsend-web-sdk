@@ -234,6 +234,9 @@ export class Feed {
   private async handleNewNotificationSocketEvent(data: { n_id: string }) {
     if (!data.n_id) return;
 
+    // let the server know the event reached this client
+    this.socket?.emit('new_notification_ack', { n_id: data.n_id });
+
     const response = await this.fetchDetails(data.n_id);
     if (response.status === RESPONSE_STATUS.ERROR) {
       return;
