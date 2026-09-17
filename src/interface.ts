@@ -233,6 +233,7 @@ export type EmitterEvents = {
 export type InboxEmitterEvents = {
   'feed.new_notification': IRemoteNotification;
   'feed.store_update': IFeedData;
+  'feed.reachability_change': IFeedReachability;
   '*': undefined;
 };
 
@@ -330,6 +331,36 @@ export interface IFeedOptions {
   pageSize?: number;
   stores?: IStore[] | null;
   host?: { socketHost?: string; apiHost?: string };
+  reachability?: boolean;
+}
+
+export enum ReachabilityStatus {
+  UNKNOWN = 'UNKNOWN', // No evidence yet from either channel
+  REACHABLE = 'REACHABLE', // Every channel with evidence is up
+  DEGRADED = 'DEGRADED', // One channel is up, the other is down
+  UNREACHABLE = 'UNREACHABLE', // Every channel with evidence is down
+}
+
+export enum ChannelStatus {
+  UNKNOWN = 'UNKNOWN', // Not used yet, or no outcome observed so far
+  UP = 'UP',
+  DOWN = 'DOWN',
+}
+
+export interface IFeedReachability {
+  status: ReachabilityStatus;
+  socket: {
+    status: ChannelStatus;
+    lastConnectedAt?: number;
+    lastDisconnectedAt?: number;
+    disconnectReason?: string;
+  };
+  api: {
+    status: ChannelStatus;
+    lastSuccessAt?: number;
+    lastFailureAt?: number;
+  };
+  updatedAt: number;
 }
 
 export interface INotificationStore {

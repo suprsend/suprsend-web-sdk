@@ -15,7 +15,9 @@ import {
   ERROR_TYPE,
   ApiResponse,
   IFeedData,
+  ChannelStatus,
 } from './interface';
+import ReachabilityTracker from './reachability';
 
 const DEFAULT_PAGE_SIZE = 20;
 const DEFAULT_TENANT_ID = 'default';
@@ -83,12 +85,19 @@ export class Feed {
   private socket: Socket;
   private expiryTimerId?: ReturnType<typeof setInterval>;
   private fetchAbortController?: AbortController;
+  private reachabilityTracker?: ReachabilityTracker;
   readonly emitter: Emitter<InboxEmitterEvents> = mitt();
 
   constructor(config: SuprSend, options: IFeedOptions) {
     this.config = config;
     this.setOptions(options);
     this.store = this.createFeedStore();
+
+    if (this.feedOptions.reachability) {
+      this.reachabilityTracker = new ReachabilityTracker((snapshot) => {
+        this.emitter.emit('feed.reachability_change', snapshot);
+      });
+    }
   }
 
   private setOptions(options: IFeedOptions) {
@@ -110,6 +119,9 @@ export class Feed {
     if (options?.stores) {
       this.feedOptions.stores = options.stores;
     }
+
+    this.feedOptions.reachability = !!options?.reachability;
+
     this.validateStore();
   }
 
@@ -228,6 +240,22 @@ export class Feed {
         meta: { ...storeData.meta, badge: 0 },
       });
       this.emitter.emit('feed.store_update', this.data);
+    });
+
+    if (!this.reachabilityTracker) return;
+
+    this.socket.on('connect', () => {
+      this.reachabilityTracker?.recordSocket(ChannelStatus.UP);
+    });
+
+    this.socket.on('disconnect', (reason) => {
+      if (reason === 'io client disconnect') return;
+      this.reachabilityTracker?.recordSocket(ChannelStatus.DOWN, reason);
+    });
+
+    this.socket.on('connect_error', (error) => {
+      if (error.message === 'Authentication Error: wrong auth token') return;
+      this.reachabilityTracker?.recordSocket(ChannelStatus.DOWN, error.message);
     });
   }
 
@@ -589,6 +617,10 @@ export class Feed {
     } as IFeedData;
   }
 
+  get reachability() {
+    return this.reachabilityTracker?.snapshot;
+  }
+
   initializeSocketConnection() {
     if (this.socket) return;
 
@@ -662,6 +694,15 @@ export class Feed {
     // If this fetch was aborted (e.g. user switched stores), discard the response
     if (abortController.signal.aborted) {
       return;
+    }
+
+    if (storeData.isFirstFetch && this.reachabilityTracker) {
+      const errorType = response.error?.type;
+      if (errorType !== ERROR_TYPE.VALIDATION_ERROR) {
+        this.reachabilityTracker.recordApiOutcome(
+          errorType !== ERROR_TYPE.NETWORK_ERROR
+        );
+      }
     }
 
     if (response.status === RESPONSE_STATUS.ERROR) {
@@ -953,6 +994,7 @@ export class Feed {
   remove() {
     this.reset();
     this.emitter.off('*');
+    this.reachabilityTracker?.dispose();
     this.socket?.disconnect();
     this.config.feeds.removeInstance(this);
   }
