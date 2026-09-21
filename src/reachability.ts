@@ -3,10 +3,12 @@ import {
   IFeedReachability,
   ReachabilityStatus,
 } from './interface';
+import { windowSupport } from './utils';
 
 export default class ReachabilityTracker {
   private onChange: (snapshot: IFeedReachability) => void;
   private disposed = false;
+  private online: boolean;
   private socketStatus: ChannelStatus = ChannelStatus.UNKNOWN;
   private apiStatus: ChannelStatus = ChannelStatus.UNKNOWN;
   private lastConnectedAt?: number;
@@ -17,29 +19,40 @@ export default class ReachabilityTracker {
   private updatedAt: number = Date.now();
   private changeKey: string;
   private cachedSnapshot: IFeedReachability;
+  private handleBrowserOnline = () => this.recordBrowserStatus(true);
+  private handleBrowserOffline = () => this.recordBrowserStatus(false);
 
   constructor(onChange: (snapshot: IFeedReachability) => void) {
     this.onChange = onChange;
-    this.changeKey = this.buildChangeKey(ReachabilityStatus.UNKNOWN);
-    this.cachedSnapshot = this.buildSnapshot(ReachabilityStatus.UNKNOWN);
+    this.online = this.readBrowserStatus();
+
+    const status = this.deriveStatus();
+    this.changeKey = this.buildChangeKey(status);
+    this.cachedSnapshot = this.buildSnapshot(status);
+
+    if (windowSupport()) {
+      window.addEventListener('online', this.handleBrowserOnline);
+      window.addEventListener('offline', this.handleBrowserOffline);
+    }
+  }
+
+  private readBrowserStatus() {
+    if (!windowSupport() || typeof navigator === 'undefined') return true;
+    return navigator.onLine !== false;
   }
 
   private deriveStatus(): ReachabilityStatus {
+    if (!this.online) return ReachabilityStatus.OFFLINE;
+
     const evidence = [this.socketStatus, this.apiStatus].filter(
       (channel) => channel !== ChannelStatus.UNKNOWN
     );
 
     if (evidence.length === 0) return ReachabilityStatus.UNKNOWN;
 
-    if (evidence.every((channel) => channel === ChannelStatus.UP)) {
-      return ReachabilityStatus.REACHABLE;
-    }
-
-    if (evidence.every((channel) => channel === ChannelStatus.DOWN)) {
-      return ReachabilityStatus.UNREACHABLE;
-    }
-
-    return ReachabilityStatus.DEGRADED;
+    return evidence.some((channel) => channel === ChannelStatus.DOWN)
+      ? ReachabilityStatus.DEGRADED
+      : ReachabilityStatus.ONLINE;
   }
 
   private buildChangeKey(status: ReachabilityStatus) {
@@ -81,6 +94,13 @@ export default class ReachabilityTracker {
     }
   }
 
+  private recordBrowserStatus(online: boolean) {
+    if (this.disposed || online === this.online) return;
+
+    this.online = online;
+    this.refresh();
+  }
+
   recordSocket(status: ChannelStatus, reason?: string) {
     if (this.disposed || status === this.socketStatus) return;
 
@@ -117,5 +137,9 @@ export default class ReachabilityTracker {
 
   dispose() {
     this.disposed = true;
+
+    if (!windowSupport()) return;
+    window.removeEventListener('online', this.handleBrowserOnline);
+    window.removeEventListener('offline', this.handleBrowserOffline);
   }
 }

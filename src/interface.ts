@@ -335,10 +335,10 @@ export interface IFeedOptions {
 }
 
 export enum ReachabilityStatus {
-  UNKNOWN = 'UNKNOWN', // No evidence yet from either channel
-  REACHABLE = 'REACHABLE', // Every channel with evidence is up
-  DEGRADED = 'DEGRADED', // One channel is up, the other is down
-  UNREACHABLE = 'UNREACHABLE', // Every channel with evidence is down
+  UNKNOWN = 'UNKNOWN', // Browser is online but no evidence yet from either channel
+  ONLINE = 'ONLINE', // Browser is online and every channel with evidence is up
+  DEGRADED = 'DEGRADED', // Browser is online but at least one channel is down
+  OFFLINE = 'OFFLINE', // Browser reports no internet connection
 }
 
 export enum ChannelStatus {

@@ -79,9 +79,9 @@ feedClient.emitter.on(
 
 ### Tracking reachability
 
-Opt in with `reachability: true` to know whether the feed is actually working for this user: whether the socket is live, and whether the client can reach the feed notifications API. Useful for rendering a "reconnecting…" banner or debugging a user who reports missing notifications.
+Opt in with `reachability: true` to know whether the feed is actually working for this user: whether the browser has internet, whether the socket is live, and whether the client can reach the feed notifications API. Useful for rendering a "reconnecting…" banner or debugging a user who reports missing notifications.
 
-It is off by default, adds no extra network requests and runs no timers. The signal is derived from the socket lifecycle and the outcome of feed loads that already happen.
+It is off by default, adds no extra network requests and runs no timers. The signal is derived from the browser's own connectivity state, the socket lifecycle and the outcome of feed loads that already happen.
 
 ```typescript
 const feedClient = suprSendClient.feeds.initialize({ reachability: true });
@@ -89,7 +89,7 @@ const feedClient = suprSendClient.feeds.initialize({ reachability: true });
 feedClient.emitter.on(
   'feed.reachability_change',
   (reachability: IFeedReachability) => {
-    // reachability.status is REACHABLE | DEGRADED | UNREACHABLE | UNKNOWN
+    // reachability.status is ONLINE | DEGRADED | OFFLINE | UNKNOWN
   }
 );
 ```
@@ -118,20 +118,21 @@ Each channel is `UNKNOWN`, `UP` or `DOWN`. A channel stays `UNKNOWN` until it ha
 
 | `status` | Meaning |
 | --- | --- |
-| `UNKNOWN` | Nothing observed yet. |
-| `REACHABLE` | Every channel with evidence is up. |
-| `DEGRADED` | One channel is up, the other is down. Socket up / API down means content will not load; API up / socket down means no realtime delivery. |
-| `UNREACHABLE` | Every channel with evidence is down. |
+| `OFFLINE` | The browser reports no internet connection. Takes precedence over the channels, which are reported as they were last observed. |
+| `UNKNOWN` | The browser is online but neither channel has evidence yet. |
+| `DEGRADED` | The browser is online and at least one channel is down. Socket up / API down means content will not load; API up / socket down means no realtime delivery; both down means the feed is not working at all while the browser still believes it has internet. |
+| `ONLINE` | The browser is online and every channel with evidence is up. |
 
 **What it measures**
 
+- **Internet** — from `navigator.onLine` and the `online`/`offline` window events. The browser only knows whether the device has a network link, so a captive portal or a dead uplink still reads as online; those show up as `DEGRADED` once a channel fails.
 - **Socket** — `UP` on connect, `DOWN` on disconnect or a failed connection. Your own `remove()` call is not counted as a drop. `disconnectReason` carries socket.io's reason; `io server disconnect` means the server hung up and the client will not retry, so that `DOWN` is permanent for the life of the feed.
 - **API** — sampled on the initial feed load only, which includes a retry after a failed load, a store switch and a load after `reset`. Pagination and mark-as-read style calls are not sampled. Any answer from the server counts as `UP`, including a `401` or `404` — the URL was reachable, the request just failed.
 
 **Limitations**
 
-- It detects failed requests, not slow ones. A hung connection can still read `REACHABLE` until the browser times out.
-- Because the API is sampled per load, an outage that begins after a successful load shows up on the socket channel first. It reaches `UNREACHABLE` when the load is retried.
+- It detects failed requests, not slow ones. A hung connection can still read `ONLINE` until the browser times out.
+- Because the API is sampled per load, an outage that begins after a successful load shows up on the socket channel first. The API channel follows when the load is retried.
 - A backgrounded tab reports stale state, since the browser throttles the timers socket.io uses to detect a dead connection.
 - Reconnection is reported up to 10s late, which is the socket retry backoff cap.
 

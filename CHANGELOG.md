@@ -4,12 +4,12 @@
 
 ### Added
 
-- Opt-in feed reachability tracking via `reachability: true` in `feeds.initialize()`. Reports whether the user is live on the feed socket and whether the client can reach the feed notifications API, as a combined `REACHABLE | DEGRADED | UNREACHABLE | UNKNOWN` status.
+- Opt-in feed reachability tracking via `reachability: true` in `feeds.initialize()`. Reports whether the browser has internet, whether the user is live on the feed socket and whether the client can reach the feed notifications API, as a combined `ONLINE | DEGRADED | OFFLINE | UNKNOWN` status.
 - New `feed.reachability_change` emitter event, fired only when the status or one of the two channels changes. The current value is also readable at any time via `feedClient.reachability`, which is `undefined` when not opted in.
 
 ### Notes
 
-- Off by default, so nothing changes for existing integrations. It adds no extra network requests and runs no timers: the socket channel comes from connection lifecycle events, and the API channel is sampled from the initial feed load that already happens.
+- Off by default, so nothing changes for existing integrations. It adds no extra network requests and runs no timers: browser connectivity comes from `navigator.onLine` and the `online`/`offline` window events, the socket channel comes from connection lifecycle events, and the API channel is sampled from the initial feed load that already happens.
 - The API channel is sampled on initial loads only (including a retry after a failure, a store switch, and a load after `reset`). Pagination and mark-as-read style calls are not sampled.
 - If you have a typed wildcard listener (`emitter.on('*', ...)`) on a feed instance, its payload union now also includes `IFeedReachability`. An exhaustive `switch` over that union may need a new case.
 
