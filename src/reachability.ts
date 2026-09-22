@@ -6,9 +6,9 @@ import {
 import { windowSupport } from './utils';
 
 export default class ReachabilityTracker {
-  private onChange: (snapshot: IFeedReachability) => void;
-  private disposed = false;
-  private online: boolean;
+  private onChange: (reachability: IFeedReachability) => void;
+  private removed = false;
+  private browserOnline: boolean;
   private socketStatus: ChannelStatus = ChannelStatus.UNKNOWN;
   private apiStatus: ChannelStatus = ChannelStatus.UNKNOWN;
   private lastConnectedAt?: number;
@@ -16,19 +16,14 @@ export default class ReachabilityTracker {
   private disconnectReason?: string;
   private lastSuccessAt?: number;
   private lastFailureAt?: number;
-  private updatedAt: number = Date.now();
-  private changeKey: string;
-  private cachedSnapshot: IFeedReachability;
-  private handleBrowserOnline = () => this.recordBrowserStatus(true);
-  private handleBrowserOffline = () => this.recordBrowserStatus(false);
+  private current: IFeedReachability;
+  private handleBrowserOnline = () => this.recordBrowserOnline(true);
+  private handleBrowserOffline = () => this.recordBrowserOnline(false);
 
-  constructor(onChange: (snapshot: IFeedReachability) => void) {
+  constructor(onChange: (reachability: IFeedReachability) => void) {
     this.onChange = onChange;
-    this.online = this.readBrowserStatus();
-
-    const status = this.deriveStatus();
-    this.changeKey = this.buildChangeKey(status);
-    this.cachedSnapshot = this.buildSnapshot(status);
+    this.browserOnline = this.readBrowserOnline();
+    this.current = this.buildSnapshot(this.deriveStatus(), Date.now());
 
     if (windowSupport()) {
       window.addEventListener('online', this.handleBrowserOnline);
@@ -36,30 +31,35 @@ export default class ReachabilityTracker {
     }
   }
 
-  private readBrowserStatus() {
+  private readBrowserOnline() {
     if (!windowSupport() || typeof navigator === 'undefined') return true;
-    return navigator.onLine !== false;
+    return navigator.onLine ?? true;
   }
 
   private deriveStatus(): ReachabilityStatus {
-    if (!this.online) return ReachabilityStatus.OFFLINE;
+    if (!this.browserOnline) return ReachabilityStatus.OFFLINE;
 
-    const evidence = [this.socketStatus, this.apiStatus].filter(
-      (channel) => channel !== ChannelStatus.UNKNOWN
-    );
+    if (
+      this.socketStatus === ChannelStatus.DOWN ||
+      this.apiStatus === ChannelStatus.DOWN
+    ) {
+      return ReachabilityStatus.DEGRADED;
+    }
 
-    if (evidence.length === 0) return ReachabilityStatus.UNKNOWN;
+    if (
+      this.socketStatus === ChannelStatus.UP ||
+      this.apiStatus === ChannelStatus.UP
+    ) {
+      return ReachabilityStatus.ONLINE;
+    }
 
-    return evidence.some((channel) => channel === ChannelStatus.DOWN)
-      ? ReachabilityStatus.DEGRADED
-      : ReachabilityStatus.ONLINE;
+    return ReachabilityStatus.UNKNOWN;
   }
 
-  private buildChangeKey(status: ReachabilityStatus) {
-    return `${status}|${this.socketStatus}|${this.apiStatus}`;
-  }
-
-  private buildSnapshot(status: ReachabilityStatus): IFeedReachability {
+  private buildSnapshot(
+    status: ReachabilityStatus,
+    lastChangedAt: number
+  ): IFeedReachability {
     return Object.freeze({
       status,
       socket: Object.freeze({
@@ -73,70 +73,74 @@ export default class ReachabilityTracker {
         lastSuccessAt: this.lastSuccessAt,
         lastFailureAt: this.lastFailureAt,
       }),
-      updatedAt: this.updatedAt,
+      lastChangedAt,
     });
   }
 
-  private refresh() {
+  private update() {
+    const previous = this.current;
     const status = this.deriveStatus();
-    const changeKey = this.buildChangeKey(status);
-    const changed = changeKey !== this.changeKey;
+    const changed =
+      status !== previous.status ||
+      this.socketStatus !== previous.socket.status ||
+      this.apiStatus !== previous.api.status;
+
+    this.current = this.buildSnapshot(
+      status,
+      changed ? Date.now() : previous.lastChangedAt
+    );
 
     if (changed) {
-      this.changeKey = changeKey;
-      this.updatedAt = Date.now();
-    }
-
-    this.cachedSnapshot = this.buildSnapshot(status);
-
-    if (changed && !this.disposed) {
-      this.onChange(this.cachedSnapshot);
+      this.onChange(this.current);
     }
   }
 
-  private recordBrowserStatus(online: boolean) {
-    if (this.disposed || online === this.online) return;
+  private recordBrowserOnline(online: boolean) {
+    if (this.removed || online === this.browserOnline) return;
 
-    this.online = online;
-    this.refresh();
+    this.browserOnline = online;
+    this.update();
   }
 
-  recordSocket(status: ChannelStatus, reason?: string) {
-    if (this.disposed || status === this.socketStatus) return;
+  recordSocketStatus(
+    status: ChannelStatus.UP | ChannelStatus.DOWN,
+    reason?: string
+  ) {
+    if (this.removed || status === this.socketStatus) return;
 
     this.socketStatus = status;
 
     if (status === ChannelStatus.UP) {
       this.lastConnectedAt = Date.now();
       this.disconnectReason = undefined;
-    } else if (status === ChannelStatus.DOWN) {
+    } else {
       this.lastDisconnectedAt = Date.now();
       this.disconnectReason = reason;
     }
 
-    this.refresh();
+    this.update();
   }
 
-  recordApiOutcome(reachable: boolean) {
-    if (this.disposed) return;
+  recordApiStatus(status: ChannelStatus.UP | ChannelStatus.DOWN) {
+    if (this.removed) return;
 
-    this.apiStatus = reachable ? ChannelStatus.UP : ChannelStatus.DOWN;
+    this.apiStatus = status;
 
-    if (reachable) {
+    if (status === ChannelStatus.UP) {
       this.lastSuccessAt = Date.now();
     } else {
       this.lastFailureAt = Date.now();
     }
 
-    this.refresh();
+    this.update();
   }
 
-  get snapshot() {
-    return this.cachedSnapshot;
+  get reachability() {
+    return this.current;
   }
 
-  dispose() {
-    this.disposed = true;
+  remove() {
+    this.removed = true;
 
     if (!windowSupport()) return;
     window.removeEventListener('online', this.handleBrowserOnline);

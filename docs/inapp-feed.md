@@ -110,18 +110,20 @@ interface IFeedReachability {
     lastSuccessAt?: number;
     lastFailureAt?: number;
   };
-  updatedAt: number;
+  lastChangedAt: number;
 }
 ```
 
+`lastChangedAt` moves only when the status or one of the two channels changes, not on every sample. The `lastSuccessAt` / `lastConnectedAt` timestamps keep advancing underneath it, so read those to know how fresh the evidence is.
+
 Each channel is `UNKNOWN`, `UP` or `DOWN`. A channel stays `UNKNOWN` until it has evidence, and a channel with no evidence is ignored, so a feed that never calls `initializeSocketConnection` is never marked down for it.
 
-| `status` | Meaning |
-| --- | --- |
-| `OFFLINE` | The browser reports no internet connection. Takes precedence over the channels, which are reported as they were last observed. |
-| `UNKNOWN` | The browser is online but neither channel has evidence yet. |
+| `status`   | Meaning                                                                                                                                                                                                                                                     |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `OFFLINE`  | The browser reports no internet connection. Takes precedence over the channels, which are reported as they were last observed.                                                                                                                              |
+| `UNKNOWN`  | The browser is online but neither channel has evidence yet.                                                                                                                                                                                                 |
 | `DEGRADED` | The browser is online and at least one channel is down. Socket up / API down means content will not load; API up / socket down means no realtime delivery; both down means the feed is not working at all while the browser still believes it has internet. |
-| `ONLINE` | The browser is online and every channel with evidence is up. |
+| `ONLINE`   | The browser is online and every channel with evidence is up.                                                                                                                                                                                                |
 
 **What it measures**
 

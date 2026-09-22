@@ -335,14 +335,14 @@ export interface IFeedOptions {
 }
 
 export enum ReachabilityStatus {
-  UNKNOWN = 'UNKNOWN', // Browser is online but no evidence yet from either channel
-  ONLINE = 'ONLINE', // Browser is online and every channel with evidence is up
-  DEGRADED = 'DEGRADED', // Browser is online but at least one channel is down
-  OFFLINE = 'OFFLINE', // Browser reports no internet connection
+  UNKNOWN = 'UNKNOWN',
+  ONLINE = 'ONLINE',
+  DEGRADED = 'DEGRADED',
+  OFFLINE = 'OFFLINE',
 }
 
 export enum ChannelStatus {
-  UNKNOWN = 'UNKNOWN', // Not used yet, or no outcome observed so far
+  UNKNOWN = 'UNKNOWN',
   UP = 'UP',
   DOWN = 'DOWN',
 }
@@ -360,7 +360,7 @@ export interface IFeedReachability {
     lastSuccessAt?: number;
     lastFailureAt?: number;
   };
-  updatedAt: number;
+  lastChangedAt: number;
 }
 
 export interface INotificationStore {

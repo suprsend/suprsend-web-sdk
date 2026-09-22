@@ -16,12 +16,14 @@ import {
   ApiResponse,
   IFeedData,
   ChannelStatus,
+  IFeedReachability,
 } from './interface';
 import ReachabilityTracker from './reachability';
 
 const DEFAULT_PAGE_SIZE = 20;
 const DEFAULT_TENANT_ID = 'default';
 const MAX_PAGE_SIZE = 100;
+const SOCKET_AUTH_ERROR_MESSAGE = 'Authentication Error: wrong auth token';
 const DEFAULT_STORE = {
   storeId: '$suprsend_default_store',
   label: '',
@@ -31,6 +33,7 @@ const feedOptionsDefaults = {
   tenantId: DEFAULT_TENANT_ID,
   pageSize: DEFAULT_PAGE_SIZE,
   stores: null,
+  reachability: false,
   host: {
     apiHost: 'https://inboxs.live',
     socketHost: 'https://betainbox.suprsend.com',
@@ -120,7 +123,9 @@ export class Feed {
       this.feedOptions.stores = options.stores;
     }
 
-    this.feedOptions.reachability = !!options?.reachability;
+    if (options?.reachability) {
+      this.feedOptions.reachability = true;
+    }
 
     this.validateStore();
   }
@@ -200,7 +205,7 @@ export class Feed {
   private initializeSocketEvents() {
     this.socket.on('connect_error', async (error) => {
       if (
-        error.message === 'Authentication Error: wrong auth token' &&
+        error.message === SOCKET_AUTH_ERROR_MESSAGE &&
         this.config.authenticateOptions?.refreshUserToken &&
         this.config.userToken
       ) {
@@ -242,20 +247,27 @@ export class Feed {
       this.emitter.emit('feed.store_update', this.data);
     });
 
-    if (!this.reachabilityTracker) return;
+    if (this.reachabilityTracker) {
+      this.initializeReachabilitySocketEvents();
+    }
+  }
 
+  private initializeReachabilitySocketEvents() {
     this.socket.on('connect', () => {
-      this.reachabilityTracker?.recordSocket(ChannelStatus.UP);
+      this.reachabilityTracker?.recordSocketStatus(ChannelStatus.UP);
     });
 
     this.socket.on('disconnect', (reason) => {
       if (reason === 'io client disconnect') return;
-      this.reachabilityTracker?.recordSocket(ChannelStatus.DOWN, reason);
+      this.reachabilityTracker?.recordSocketStatus(ChannelStatus.DOWN, reason);
     });
 
     this.socket.on('connect_error', (error) => {
-      if (error.message === 'Authentication Error: wrong auth token') return;
-      this.reachabilityTracker?.recordSocket(ChannelStatus.DOWN, error.message);
+      if (error.message === SOCKET_AUTH_ERROR_MESSAGE) return;
+      this.reachabilityTracker?.recordSocketStatus(
+        ChannelStatus.DOWN,
+        error.message
+      );
     });
   }
 
@@ -264,7 +276,6 @@ export class Feed {
 
     const response = await this.fetchDetails(data.n_id);
 
-    // let the server know the event reached this client
     this.socket?.emit('new_notification_ack', {
       n_id: data.n_id,
       api_status: response.status !== RESPONSE_STATUS.ERROR,
@@ -621,8 +632,8 @@ export class Feed {
     } as IFeedData;
   }
 
-  get reachability() {
-    return this.reachabilityTracker?.snapshot;
+  get reachability(): IFeedReachability | undefined {
+    return this.reachabilityTracker?.reachability;
   }
 
   initializeSocketConnection() {
@@ -703,8 +714,10 @@ export class Feed {
     if (storeData.isFirstFetch && this.reachabilityTracker) {
       const errorType = response.error?.type;
       if (errorType !== ERROR_TYPE.VALIDATION_ERROR) {
-        this.reachabilityTracker.recordApiOutcome(
-          errorType !== ERROR_TYPE.NETWORK_ERROR
+        this.reachabilityTracker.recordApiStatus(
+          errorType === ERROR_TYPE.NETWORK_ERROR
+            ? ChannelStatus.DOWN
+            : ChannelStatus.UP
         );
       }
     }
@@ -998,7 +1011,7 @@ export class Feed {
   remove() {
     this.reset();
     this.emitter.off('*');
-    this.reachabilityTracker?.dispose();
+    this.reachabilityTracker?.remove();
     this.socket?.disconnect();
     this.config.feeds.removeInstance(this);
   }
