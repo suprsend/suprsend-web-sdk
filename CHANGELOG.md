@@ -9,9 +9,7 @@
 
 ### Notes
 
-- Off by default, so nothing changes for existing integrations. It adds no extra network requests and runs no timers: browser connectivity comes from `navigator.onLine` and the `online`/`offline` window events, the socket channel comes from connection lifecycle events, and the API channel is sampled from the initial feed load that already happens.
-- The API channel is sampled on initial loads only (including a retry after a failure, a store switch, and a load after `reset`). Pagination and mark-as-read style calls are not sampled.
-- If you have a typed wildcard listener (`emitter.on('*', ...)`) on a feed instance, its payload union now also includes `IFeedReachability`. An exhaustive `switch` over that union may need a new case.
+- Off by default, so nothing changes for existing integrations.
 
 [5.3.0]: https://github.com/suprsend/suprsend-web-sdk/compare/v5.2.0...v5.3.0
 
