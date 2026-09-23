@@ -17,8 +17,11 @@ import {
   IFeedData,
   ChannelStatus,
   IFeedReachability,
+  IFeedApiError,
+  IFeedSocketError,
 } from './interface';
 import ReachabilityTracker from './reachability';
+import { windowSupport } from './utils';
 
 const DEFAULT_PAGE_SIZE = 20;
 const DEFAULT_TENANT_ID = 'default';
@@ -89,6 +92,8 @@ export class Feed {
   private expiryTimerId?: ReturnType<typeof setInterval>;
   private fetchAbortController?: AbortController;
   private reachabilityTracker?: ReachabilityTracker;
+  private lastApiError: IFeedApiError = { status_code: null, message: '' };
+  private lastSocketError: IFeedSocketError = { message: '' };
   readonly emitter: Emitter<InboxEmitterEvents> = mitt();
 
   constructor(config: SuprSend, options: IFeedOptions) {
@@ -247,23 +252,24 @@ export class Feed {
       this.emitter.emit('feed.store_update', this.data);
     });
 
-    if (this.reachabilityTracker) {
-      this.initializeReachabilitySocketEvents();
-    }
+    this.initializeSocketStatusEvents();
   }
 
-  private initializeReachabilitySocketEvents() {
+  private initializeSocketStatusEvents() {
     this.socket.on('connect', () => {
+      this.lastSocketError = { message: '' };
       this.reachabilityTracker?.recordSocketStatus(ChannelStatus.UP);
     });
 
     this.socket.on('disconnect', (reason) => {
       if (reason === 'io client disconnect') return;
+      this.lastSocketError = { message: reason };
       this.reachabilityTracker?.recordSocketStatus(ChannelStatus.DOWN, reason);
     });
 
     this.socket.on('connect_error', (error) => {
       if (error.message === SOCKET_AUTH_ERROR_MESSAGE) return;
+      this.lastSocketError = { message: error.message };
       this.reachabilityTracker?.recordSocketStatus(
         ChannelStatus.DOWN,
         error.message
@@ -711,8 +717,19 @@ export class Feed {
       return;
     }
 
+    const errorType = response.error?.type;
+
+    if (storeData.isFirstFetch && errorType !== ERROR_TYPE.VALIDATION_ERROR) {
+      this.lastApiError =
+        errorType === ERROR_TYPE.NETWORK_ERROR
+          ? {
+              status_code: response.statusCode ?? null,
+              message: response.error?.message || 'network error',
+            }
+          : { status_code: null, message: '' };
+    }
+
     if (storeData.isFirstFetch && this.reachabilityTracker) {
-      const errorType = response.error?.type;
       if (errorType !== ERROR_TYPE.VALIDATION_ERROR) {
         this.reachabilityTracker.recordApiStatus(
           errorType === ERROR_TYPE.NETWORK_ERROR
@@ -993,6 +1010,56 @@ export class Feed {
 
     this.emitter.emit('feed.store_update', this.data);
     return await this.config.client().request({ type: 'patch', url });
+  }
+
+  async reportIssue() {
+    const reportedAt = new Date().toISOString();
+    const url = this.getUrl('report_issue', {
+      distinct_id: this.config.distinctId,
+      tenant_id: this.feedOptions.tenantId,
+    });
+
+    const response = await this.config.client().request({
+      type: 'post',
+      url,
+      payload: {
+        api_error: this.lastApiError,
+        socket_error: this.lastSocketError,
+      },
+    });
+
+    if (response.status === RESPONSE_STATUS.ERROR) {
+      this.mailReportIssue(reportedAt, response);
+    }
+
+    return response;
+  }
+
+  private mailReportIssue(reportedAt: string, response: ApiResponse) {
+    if (!windowSupport()) return;
+
+    const reportIssueError = {
+      status_code: response.statusCode ?? null,
+      message: response.error?.message || '',
+    };
+
+    const subject = 'Feed Reachability Issue';
+    const body = [
+      `Distinct ID: ${this.config.distinctId}`,
+      `Tenant ID: ${this.feedOptions.tenantId}`,
+      '',
+      `Reported On: ${reportedAt}`,
+      '',
+      `api_error: ${JSON.stringify(this.lastApiError)}`,
+      '',
+      `socket_error: ${JSON.stringify(this.lastSocketError)}`,
+      '',
+      `report_issue_error: ${JSON.stringify(reportIssueError)}`,
+    ].join('\n');
+
+    window.location.href = `mailto:support@suprsend.com?subject=${encodeURIComponent(
+      subject
+    )}&body=${encodeURIComponent(body)}`;
   }
 
   reset() {

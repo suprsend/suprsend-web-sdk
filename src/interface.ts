@@ -363,6 +363,15 @@ export interface IFeedReachability {
   lastChangedAt: number;
 }
 
+export interface IFeedSocketError {
+  message: string;
+}
+
+export interface IFeedApiError {
+  status_code: number | null;
+  message: string;
+}
+
 export interface INotificationStore {
   notifications: IRemoteNotification[];
   store: IStore;
