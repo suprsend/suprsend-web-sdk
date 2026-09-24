@@ -5,6 +5,9 @@ import {
 } from './interface';
 import { windowSupport } from './utils';
 
+// socket reconnect attempts reported as RECONNECTING before falling back to DEGRADED
+const MAX_RECONNECTING_ATTEMPTS = 10;
+
 export default class ReachabilityTracker {
   private onChange: (reachability: IFeedReachability) => void;
   private removed = false;
@@ -14,8 +17,11 @@ export default class ReachabilityTracker {
   private lastConnectedAt?: number;
   private lastDisconnectedAt?: number;
   private disconnectReason?: string;
+  private reconnectAttempts = 0;
+  private reconnectExhausted = false;
   private lastSuccessAt?: number;
   private lastFailureAt?: number;
+  private apiAuthFailed = false;
   private current: IFeedReachability;
   private handleBrowserOnline = () => this.recordBrowserOnline(true);
   private handleBrowserOffline = () => this.recordBrowserOnline(false);
@@ -38,6 +44,19 @@ export default class ReachabilityTracker {
 
   private deriveStatus(): ReachabilityStatus {
     if (!this.browserOnline) return ReachabilityStatus.OFFLINE;
+
+    // retrying won't help until the user token is fixed
+    if (this.apiAuthFailed) return ReachabilityStatus.AUTH_ERROR;
+
+    // only a socket that was connected before is treated as reconnecting
+    if (
+      this.socketStatus === ChannelStatus.DOWN &&
+      this.apiStatus !== ChannelStatus.DOWN &&
+      this.lastConnectedAt !== undefined &&
+      !this.reconnectExhausted
+    ) {
+      return ReachabilityStatus.RECONNECTING;
+    }
 
     if (
       this.socketStatus === ChannelStatus.DOWN ||
@@ -67,11 +86,13 @@ export default class ReachabilityTracker {
         lastConnectedAt: this.lastConnectedAt,
         lastDisconnectedAt: this.lastDisconnectedAt,
         disconnectReason: this.disconnectReason,
+        reconnectAttempts: this.reconnectAttempts,
       }),
       api: Object.freeze({
         status: this.apiStatus,
         lastSuccessAt: this.lastSuccessAt,
         lastFailureAt: this.lastFailureAt,
+        authError: this.apiAuthFailed,
       }),
       lastChangedAt,
     });
@@ -83,7 +104,8 @@ export default class ReachabilityTracker {
     const changed =
       status !== previous.status ||
       this.socketStatus !== previous.socket.status ||
-      this.apiStatus !== previous.api.status;
+      this.apiStatus !== previous.api.status ||
+      this.apiAuthFailed !== previous.api.authError;
 
     this.current = this.buildSnapshot(
       status,
@@ -113,11 +135,29 @@ export default class ReachabilityTracker {
     if (status === ChannelStatus.UP) {
       this.lastConnectedAt = Date.now();
       this.disconnectReason = undefined;
+      this.reconnectAttempts = 0;
+      this.reconnectExhausted = false;
     } else {
       this.lastDisconnectedAt = Date.now();
       this.disconnectReason = reason;
     }
 
+    this.update();
+  }
+
+  recordReconnectAttempt(attempt: number) {
+    if (this.removed) return;
+
+    this.reconnectAttempts = attempt;
+    this.reconnectExhausted = attempt > MAX_RECONNECTING_ATTEMPTS;
+    this.update();
+  }
+
+  // socket.io won't retry on its own (server disconnect / middleware error)
+  recordReconnectStopped() {
+    if (this.removed || this.reconnectExhausted) return;
+
+    this.reconnectExhausted = true;
     this.update();
   }
 
@@ -128,10 +168,21 @@ export default class ReachabilityTracker {
 
     if (status === ChannelStatus.UP) {
       this.lastSuccessAt = Date.now();
+      this.apiAuthFailed = false;
     } else {
       this.lastFailureAt = Date.now();
     }
 
+    this.update();
+  }
+
+  // 401/403 from the API: the user token is invalid or lacks permission
+  recordApiAuthError() {
+    if (this.removed) return;
+
+    this.apiStatus = ChannelStatus.DOWN;
+    this.apiAuthFailed = true;
+    this.lastFailureAt = Date.now();
     this.update();
   }
 

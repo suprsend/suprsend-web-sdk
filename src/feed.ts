@@ -27,6 +27,7 @@ const DEFAULT_PAGE_SIZE = 20;
 const DEFAULT_TENANT_ID = 'default';
 const MAX_PAGE_SIZE = 100;
 const SOCKET_AUTH_ERROR_MESSAGE = 'Authentication Error: wrong auth token';
+const AUTH_ERROR_STATUS_CODES = [401, 403];
 const DEFAULT_STORE = {
   storeId: '$suprsend_default_store',
   label: '',
@@ -265,6 +266,9 @@ export class Feed {
       if (reason === 'io client disconnect') return;
       this.lastSocketError = { message: reason };
       this.reachabilityTracker?.recordSocketStatus(ChannelStatus.DOWN, reason);
+      if (!this.socket.active) {
+        this.reachabilityTracker?.recordReconnectStopped();
+      }
     });
 
     this.socket.on('connect_error', (error) => {
@@ -274,6 +278,13 @@ export class Feed {
         ChannelStatus.DOWN,
         error.message
       );
+      if (!this.socket.active) {
+        this.reachabilityTracker?.recordReconnectStopped();
+      }
+    });
+
+    this.socket.io.on('reconnect_attempt', (attempt) => {
+      this.reachabilityTracker?.recordReconnectAttempt(attempt);
     });
   }
 
@@ -718,19 +729,26 @@ export class Feed {
     }
 
     const errorType = response.error?.type;
+    const isAuthError =
+      !!response.statusCode &&
+      AUTH_ERROR_STATUS_CODES.includes(response.statusCode);
 
     if (storeData.isFirstFetch && errorType !== ERROR_TYPE.VALIDATION_ERROR) {
       this.lastApiError =
-        errorType === ERROR_TYPE.NETWORK_ERROR
+        errorType === ERROR_TYPE.NETWORK_ERROR || isAuthError
           ? {
               status_code: response.statusCode ?? null,
-              message: response.error?.message || 'network error',
+              message:
+                response.error?.message ||
+                (isAuthError ? 'authentication error' : 'network error'),
             }
           : { status_code: null, message: '' };
     }
 
     if (storeData.isFirstFetch && this.reachabilityTracker) {
-      if (errorType !== ERROR_TYPE.VALIDATION_ERROR) {
+      if (isAuthError) {
+        this.reachabilityTracker.recordApiAuthError();
+      } else if (errorType !== ERROR_TYPE.VALIDATION_ERROR) {
         this.reachabilityTracker.recordApiStatus(
           errorType === ERROR_TYPE.NETWORK_ERROR
             ? ChannelStatus.DOWN
@@ -1028,7 +1046,11 @@ export class Feed {
       },
     });
 
-    if (response.status === RESPONSE_STATUS.ERROR) {
+    // rate limited reports are surfaced to the user, no mail fallback
+    if (
+      response.status === RESPONSE_STATUS.ERROR &&
+      response.statusCode !== 429
+    ) {
       this.mailReportIssue(reportedAt, response);
     }
 

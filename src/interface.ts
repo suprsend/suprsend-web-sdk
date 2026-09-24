@@ -337,7 +337,9 @@ export interface IFeedOptions {
 export enum ReachabilityStatus {
   UNKNOWN = 'UNKNOWN',
   ONLINE = 'ONLINE',
+  RECONNECTING = 'RECONNECTING',
   DEGRADED = 'DEGRADED',
+  AUTH_ERROR = 'AUTH_ERROR',
   OFFLINE = 'OFFLINE',
 }
 
@@ -354,11 +356,13 @@ export interface IFeedReachability {
     lastConnectedAt?: number;
     lastDisconnectedAt?: number;
     disconnectReason?: string;
+    reconnectAttempts?: number;
   };
   api: {
     status: ChannelStatus;
     lastSuccessAt?: number;
     lastFailureAt?: number;
+    authError?: boolean;
   };
   lastChangedAt: number;
 }
