@@ -15,11 +15,19 @@ import {
   ERROR_TYPE,
   ApiResponse,
   IFeedData,
+  ChannelStatus,
+  IFeedReachability,
+  IFeedApiError,
+  IFeedSocketError,
 } from './interface';
+import ReachabilityTracker from './reachability';
+import { windowSupport } from './utils';
 
 const DEFAULT_PAGE_SIZE = 20;
 const DEFAULT_TENANT_ID = 'default';
 const MAX_PAGE_SIZE = 100;
+const SOCKET_AUTH_ERROR_MESSAGE = 'Authentication Error: wrong auth token';
+const AUTH_ERROR_STATUS_CODES = [401, 403];
 const DEFAULT_STORE = {
   storeId: '$suprsend_default_store',
   label: '',
@@ -29,6 +37,7 @@ const feedOptionsDefaults = {
   tenantId: DEFAULT_TENANT_ID,
   pageSize: DEFAULT_PAGE_SIZE,
   stores: null,
+  reachability: false,
   host: {
     apiHost: 'https://inboxs.live',
     socketHost: 'https://betainbox.suprsend.com',
@@ -83,12 +92,21 @@ export class Feed {
   private socket: Socket;
   private expiryTimerId?: ReturnType<typeof setInterval>;
   private fetchAbortController?: AbortController;
+  private reachabilityTracker?: ReachabilityTracker;
+  private lastApiError: IFeedApiError = { status_code: null, message: '' };
+  private lastSocketError: IFeedSocketError = { message: '' };
   readonly emitter: Emitter<InboxEmitterEvents> = mitt();
 
   constructor(config: SuprSend, options: IFeedOptions) {
     this.config = config;
     this.setOptions(options);
     this.store = this.createFeedStore();
+
+    if (this.feedOptions.reachability) {
+      this.reachabilityTracker = new ReachabilityTracker((snapshot) => {
+        this.emitter.emit('feed.reachability_change', snapshot);
+      });
+    }
   }
 
   private setOptions(options: IFeedOptions) {
@@ -110,6 +128,11 @@ export class Feed {
     if (options?.stores) {
       this.feedOptions.stores = options.stores;
     }
+
+    if (options?.reachability) {
+      this.feedOptions.reachability = true;
+    }
+
     this.validateStore();
   }
 
@@ -188,7 +211,7 @@ export class Feed {
   private initializeSocketEvents() {
     this.socket.on('connect_error', async (error) => {
       if (
-        error.message === 'Authentication Error: wrong auth token' &&
+        error.message === SOCKET_AUTH_ERROR_MESSAGE &&
         this.config.authenticateOptions?.refreshUserToken &&
         this.config.userToken
       ) {
@@ -229,12 +252,52 @@ export class Feed {
       });
       this.emitter.emit('feed.store_update', this.data);
     });
+
+    this.initializeSocketStatusEvents();
+  }
+
+  private initializeSocketStatusEvents() {
+    this.socket.on('connect', () => {
+      this.lastSocketError = { message: '' };
+      this.reachabilityTracker?.recordSocketStatus(ChannelStatus.UP);
+    });
+
+    this.socket.on('disconnect', (reason) => {
+      if (reason === 'io client disconnect') return;
+      this.lastSocketError = { message: reason };
+      this.reachabilityTracker?.recordSocketStatus(ChannelStatus.DOWN, reason);
+      if (!this.socket.active) {
+        this.reachabilityTracker?.recordReconnectStopped();
+      }
+    });
+
+    this.socket.on('connect_error', (error) => {
+      if (error.message === SOCKET_AUTH_ERROR_MESSAGE) return;
+      this.lastSocketError = { message: error.message };
+      this.reachabilityTracker?.recordSocketStatus(
+        ChannelStatus.DOWN,
+        error.message
+      );
+      if (!this.socket.active) {
+        this.reachabilityTracker?.recordReconnectStopped();
+      }
+    });
+
+    this.socket.io.on('reconnect_attempt', (attempt) => {
+      this.reachabilityTracker?.recordReconnectAttempt(attempt);
+    });
   }
 
   private async handleNewNotificationSocketEvent(data: { n_id: string }) {
     if (!data.n_id) return;
 
     const response = await this.fetchDetails(data.n_id);
+
+    this.socket?.emit('new_notification_ack', {
+      n_id: data.n_id,
+      api_status: response.status !== RESPONSE_STATUS.ERROR,
+    });
+
     if (response.status === RESPONSE_STATUS.ERROR) {
       return;
     }
@@ -586,6 +649,10 @@ export class Feed {
     } as IFeedData;
   }
 
+  get reachability(): IFeedReachability | undefined {
+    return this.reachabilityTracker?.reachability;
+  }
+
   initializeSocketConnection() {
     if (this.socket) return;
 
@@ -659,6 +726,35 @@ export class Feed {
     // If this fetch was aborted (e.g. user switched stores), discard the response
     if (abortController.signal.aborted) {
       return;
+    }
+
+    const errorType = response.error?.type;
+    const isAuthError =
+      !!response.statusCode &&
+      AUTH_ERROR_STATUS_CODES.includes(response.statusCode);
+
+    if (storeData.isFirstFetch && errorType !== ERROR_TYPE.VALIDATION_ERROR) {
+      this.lastApiError =
+        errorType === ERROR_TYPE.NETWORK_ERROR || isAuthError
+          ? {
+              status_code: response.statusCode ?? null,
+              message:
+                response.error?.message ||
+                (isAuthError ? 'authentication error' : 'network error'),
+            }
+          : { status_code: null, message: '' };
+    }
+
+    if (storeData.isFirstFetch && this.reachabilityTracker) {
+      if (isAuthError) {
+        this.reachabilityTracker.recordApiAuthError();
+      } else if (errorType !== ERROR_TYPE.VALIDATION_ERROR) {
+        this.reachabilityTracker.recordApiStatus(
+          errorType === ERROR_TYPE.NETWORK_ERROR
+            ? ChannelStatus.DOWN
+            : ChannelStatus.UP
+        );
+      }
     }
 
     if (response.status === RESPONSE_STATUS.ERROR) {
@@ -934,6 +1030,60 @@ export class Feed {
     return await this.config.client().request({ type: 'patch', url });
   }
 
+  async reportIssue() {
+    const reportedAt = new Date().toISOString();
+    const url = this.getUrl('report_issue', {
+      distinct_id: this.config.distinctId,
+      tenant_id: this.feedOptions.tenantId,
+    });
+
+    const response = await this.config.client().request({
+      type: 'post',
+      url,
+      payload: {
+        api_error: this.lastApiError,
+        socket_error: this.lastSocketError,
+      },
+    });
+
+    // rate limited reports are surfaced to the user, no mail fallback
+    if (
+      response.status === RESPONSE_STATUS.ERROR &&
+      response.statusCode !== 429
+    ) {
+      this.mailReportIssue(reportedAt, response);
+    }
+
+    return response;
+  }
+
+  private mailReportIssue(reportedAt: string, response: ApiResponse) {
+    if (!windowSupport()) return;
+
+    const reportIssueError = {
+      status_code: response.statusCode ?? null,
+      message: response.error?.message || '',
+    };
+
+    const subject = 'Feed Reachability Issue';
+    const body = [
+      `Distinct ID: ${this.config.distinctId}`,
+      `Tenant ID: ${this.feedOptions.tenantId}`,
+      '',
+      `Reported On: ${reportedAt}`,
+      '',
+      `api_error: ${JSON.stringify(this.lastApiError)}`,
+      '',
+      `socket_error: ${JSON.stringify(this.lastSocketError)}`,
+      '',
+      `report_issue_error: ${JSON.stringify(reportIssueError)}`,
+    ].join('\n');
+
+    window.location.href = `mailto:support@suprsend.com?subject=${encodeURIComponent(
+      subject
+    )}&body=${encodeURIComponent(body)}`;
+  }
+
   reset() {
     this.store.setState({
       ...initialFeedStore,
@@ -950,6 +1100,7 @@ export class Feed {
   remove() {
     this.reset();
     this.emitter.off('*');
+    this.reachabilityTracker?.remove();
     this.socket?.disconnect();
     this.config.feeds.removeInstance(this);
   }
