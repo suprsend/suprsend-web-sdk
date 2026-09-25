@@ -4,12 +4,16 @@
 
 ### Added
 
-- Opt-in feed reachability tracking via `reachability: true` in `feeds.initialize()`. Reports whether the browser has internet, whether the user is live on the feed socket and whether the client can reach the feed notifications API, as a combined `ONLINE | DEGRADED | OFFLINE | UNKNOWN` status.
-- New `feed.reachability_change` emitter event, fired only when the status or one of the two channels changes. The current value is also readable at any time via `feedClient.reachability`, which is `undefined` when not opted in.
+- Opt-in feed reachability tracking via `reachability: true` in `feeds.initialize()`. Reports whether the browser has internet, whether the user is live on the feed socket and whether the client can reach the feed notifications API, as a combined `ONLINE | RECONNECTING | DEGRADED | AUTH_ERROR | OFFLINE | UNKNOWN` status.
+- New `feed.reachability_change` emitter event, fired only when the status, one of the two channels changes. The current value is also readable at any time via `feedClient.reachability`, which is `undefined` when not opted in.
+
+### Changed
+
+- The feed socket now acknowledges each new notification back to SuprSend, including whether its details loaded, to help diagnose delivery issues.
 
 ### Notes
 
-- Off by default, so nothing changes for existing integrations.
+- Reachability is off by default, so nothing changes for existing integrations.
 
 [5.3.0]: https://github.com/suprsend/suprsend-web-sdk/compare/v5.2.0...v5.3.0
 
