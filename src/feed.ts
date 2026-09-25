@@ -28,6 +28,7 @@ const DEFAULT_TENANT_ID = 'default';
 const MAX_PAGE_SIZE = 100;
 const SOCKET_AUTH_ERROR_MESSAGE = 'Authentication Error: wrong auth token';
 const AUTH_ERROR_STATUS_CODES = [401, 403];
+const SUPPORT_EMAIL = 'support@suprsend.com';
 const DEFAULT_STORE = {
   storeId: '$suprsend_default_store',
   label: '',
@@ -1079,7 +1080,7 @@ export class Feed {
       `report_issue_error: ${JSON.stringify(reportIssueError)}`,
     ].join('\n');
 
-    window.location.href = `mailto:support@suprsend.com?subject=${encodeURIComponent(
+    window.location.href = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent(
       subject
     )}&body=${encodeURIComponent(body)}`;
   }
