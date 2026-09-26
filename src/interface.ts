@@ -337,7 +337,7 @@ export interface IFeedOptions {
 export enum ReachabilityStatus {
   UNKNOWN = 'UNKNOWN',
   ONLINE = 'ONLINE',
-  RECONNECTING = 'RECONNECTING',
+  CONNECTING = 'CONNECTING',
   DEGRADED = 'DEGRADED',
   AUTH_ERROR = 'AUTH_ERROR',
   OFFLINE = 'OFFLINE',
@@ -345,6 +345,7 @@ export enum ReachabilityStatus {
 
 export enum ChannelStatus {
   UNKNOWN = 'UNKNOWN',
+  CONNECTING = 'CONNECTING',
   UP = 'UP',
   DOWN = 'DOWN',
 }

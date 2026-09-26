@@ -5,8 +5,8 @@ import {
 } from './interface';
 import { windowSupport } from './utils';
 
-// socket reconnect attempts reported as RECONNECTING before falling back to DEGRADED
-const MAX_RECONNECTING_ATTEMPTS = 10;
+// socket connect attempts reported as CONNECTING before falling back to DEGRADED
+const MAX_CONNECTING_ATTEMPTS = 10;
 
 export default class ReachabilityTracker {
   private onChange: (reachability: IFeedReachability) => void;
@@ -18,7 +18,6 @@ export default class ReachabilityTracker {
   private lastDisconnectedAt?: number;
   private disconnectReason?: string;
   private reconnectAttempts = 0;
-  private reconnectExhausted = false;
   private lastSuccessAt?: number;
   private lastFailureAt?: number;
   private apiAuthFailed = false;
@@ -48,21 +47,18 @@ export default class ReachabilityTracker {
     // retrying won't help until the user token is fixed
     if (this.apiAuthFailed) return ReachabilityStatus.AUTH_ERROR;
 
-    // only a socket that was connected before is treated as reconnecting
-    if (
-      this.socketStatus === ChannelStatus.DOWN &&
-      this.apiStatus !== ChannelStatus.DOWN &&
-      this.lastConnectedAt !== undefined &&
-      !this.reconnectExhausted
-    ) {
-      return ReachabilityStatus.RECONNECTING;
-    }
-
     if (
       this.socketStatus === ChannelStatus.DOWN ||
       this.apiStatus === ChannelStatus.DOWN
     ) {
       return ReachabilityStatus.DEGRADED;
+    }
+
+    if (
+      this.socketStatus === ChannelStatus.CONNECTING ||
+      this.apiStatus === ChannelStatus.CONNECTING
+    ) {
+      return ReachabilityStatus.CONNECTING;
     }
 
     if (
@@ -125,23 +121,40 @@ export default class ReachabilityTracker {
   }
 
   recordSocketStatus(
-    status: ChannelStatus.UP | ChannelStatus.DOWN,
+    status: Exclude<ChannelStatus, ChannelStatus.UNKNOWN>,
     reason?: string
   ) {
-    if (this.removed || status === this.socketStatus) return;
-
-    this.socketStatus = status;
+    if (this.removed) return;
 
     if (status === ChannelStatus.UP) {
+      if (this.socketStatus === ChannelStatus.UP) return;
+
       this.lastConnectedAt = Date.now();
       this.disconnectReason = undefined;
       this.reconnectAttempts = 0;
-      this.reconnectExhausted = false;
     } else {
-      this.lastDisconnectedAt = Date.now();
-      this.disconnectReason = reason;
+      if (
+        status === ChannelStatus.CONNECTING &&
+        this.reconnectAttempts > MAX_CONNECTING_ATTEMPTS
+      ) {
+        status = ChannelStatus.DOWN;
+      }
+
+      if (reason !== undefined) {
+        this.lastDisconnectedAt = Date.now();
+        this.disconnectReason = reason;
+      }
     }
 
+    this.socketStatus = status;
+    this.update();
+  }
+
+  recordSocketConnected() {
+    if (this.removed) return;
+
+    this.reconnectAttempts = 0;
+    this.socketStatus = ChannelStatus.CONNECTING;
     this.update();
   }
 
@@ -149,30 +162,29 @@ export default class ReachabilityTracker {
     if (this.removed) return;
 
     this.reconnectAttempts = attempt;
-    this.reconnectExhausted = attempt > MAX_RECONNECTING_ATTEMPTS;
+
+    if (attempt > MAX_CONNECTING_ATTEMPTS) {
+      this.socketStatus = ChannelStatus.DOWN;
+    }
+
     this.update();
   }
 
-  // socket.io won't retry on its own (server disconnect / middleware error)
-  recordReconnectStopped() {
-    if (this.removed || this.reconnectExhausted) return;
-
-    this.reconnectExhausted = true;
-    this.update();
-  }
-
-  recordApiStatus(status: ChannelStatus.UP | ChannelStatus.DOWN) {
+  recordApiStatus(status: Exclude<ChannelStatus, ChannelStatus.UNKNOWN>) {
     if (this.removed) return;
 
-    this.apiStatus = status;
+    if (status === ChannelStatus.CONNECTING) {
+      if (this.apiStatus === ChannelStatus.UP) return;
 
-    if (status === ChannelStatus.UP) {
+      this.apiAuthFailed = false;
+    } else if (status === ChannelStatus.UP) {
       this.lastSuccessAt = Date.now();
       this.apiAuthFailed = false;
     } else {
       this.lastFailureAt = Date.now();
     }
 
+    this.apiStatus = status;
     this.update();
   }
 

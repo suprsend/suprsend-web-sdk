@@ -213,7 +213,7 @@ const feedClient = suprSendClient.feeds.initialize({ reachability: true });
 feedClient.emitter.on(
   'feed.reachability_change',
   (reachability: IFeedReachability) => {
-    // reachability.status is ONLINE | RECONNECTING | DEGRADED | AUTH_ERROR | OFFLINE | UNKNOWN
+    // reachability.status is ONLINE | CONNECTING | DEGRADED | AUTH_ERROR | OFFLINE | UNKNOWN
   }
 );
 ```
@@ -240,16 +240,16 @@ interface IFeedReachability {
 }
 ```
 
-Each channel is `UNKNOWN`, `UP` or `DOWN`. A channel stays `UNKNOWN` until it has evidence, and a channel with no evidence is ignored, so a feed that never calls `initializeSocketConnection` is never marked down for it.
+Each channel is `UNKNOWN`, `CONNECTING`, `UP` or `DOWN`. A channel stays `UNKNOWN` until it is used, and an `UNKNOWN` channel is ignored.
 
-| `status`       | Meaning                                                                                                                                      |
-| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `OFFLINE`      | The browser reports no internet connection.                                                                                                  |
-| `UNKNOWN`      | The browser is online but neither channel has evidence yet. (occurs when `initializeSocketConnection` or `fetch` methods are not called yet) |
-| `RECONNECTING` | A socket that was connected earlier has dropped and is retrying automatically.                                                               |
-| `DEGRADED`     | The browser is online and at least one channel is down.                                                                                      |
-| `AUTH_ERROR`   | The browser is online but the API answered the initial feed load with `401` or `403`                                                         |
-| `ONLINE`       | The browser is online and every channel with evidence is up.                                                                                 |
+| status       | Meaning                                                                                                                                      |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `OFFLINE`    | The browser reports no internet connection.                                                                                                  |
+| `UNKNOWN`    | The browser is online but neither channel has evidence yet. (occurs when `initializeSocketConnection` or `fetch` methods are not called yet) |
+| `CONNECTING` | No channel is down and at least one channel is `CONNECTING`.                                                                                 |
+| `DEGRADED`   | The browser is online and at least one channel is down.                                                                                      |
+| `AUTH_ERROR` | The browser is online but the API answered the initial feed load with `401` or `403`                                                         |
+| `ONLINE`     | The browser is online and every channel with evidence is up.                                                                                 |
 
 ## Example
 

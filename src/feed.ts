@@ -28,6 +28,7 @@ const DEFAULT_TENANT_ID = 'default';
 const MAX_PAGE_SIZE = 100;
 const SOCKET_AUTH_ERROR_MESSAGE = 'Authentication Error: wrong auth token';
 const AUTH_ERROR_STATUS_CODES = [401, 403];
+const JOIN_ROOM_TIMEOUT_MS = 5000;
 const SUPPORT_EMAIL = 'support@suprsend.com';
 const DEFAULT_STORE = {
   storeId: '$suprsend_default_store',
@@ -92,6 +93,7 @@ export class Feed {
   private store: StoreApi<INotificationStore>;
   private socket: Socket;
   private expiryTimerId?: ReturnType<typeof setInterval>;
+  private joinRoomTimerId?: ReturnType<typeof setTimeout>;
   private fetchAbortController?: AbortController;
   private reachabilityTracker?: ReachabilityTracker;
   private lastApiError: IFeedApiError = { status_code: null, message: '' };
@@ -260,33 +262,57 @@ export class Feed {
   private initializeSocketStatusEvents() {
     this.socket.on('connect', () => {
       this.lastSocketError = { message: '' };
+      this.clearJoinRoomTimer();
+
+      if (!this.reachabilityTracker) return;
+
+      if (this.socket.recovered) {
+        this.reachabilityTracker.recordSocketStatus(ChannelStatus.UP);
+        return;
+      }
+
+      this.reachabilityTracker.recordSocketConnected();
+      this.joinRoomTimerId = setTimeout(() => {
+        this.joinRoomTimerId = undefined;
+        this.lastSocketError = { message: 'joined_room not received' };
+        this.reachabilityTracker?.recordSocketStatus(ChannelStatus.DOWN);
+      }, JOIN_ROOM_TIMEOUT_MS);
+    });
+
+    this.socket.on('joined_room', () => {
+      this.clearJoinRoomTimer();
+      this.lastSocketError = { message: '' };
       this.reachabilityTracker?.recordSocketStatus(ChannelStatus.UP);
     });
 
     this.socket.on('disconnect', (reason) => {
+      this.clearJoinRoomTimer();
       if (reason === 'io client disconnect') return;
       this.lastSocketError = { message: reason };
-      this.reachabilityTracker?.recordSocketStatus(ChannelStatus.DOWN, reason);
-      if (!this.socket.active) {
-        this.reachabilityTracker?.recordReconnectStopped();
-      }
+      this.reachabilityTracker?.recordSocketStatus(
+        this.socket.active ? ChannelStatus.CONNECTING : ChannelStatus.DOWN,
+        reason
+      );
     });
 
     this.socket.on('connect_error', (error) => {
       if (error.message === SOCKET_AUTH_ERROR_MESSAGE) return;
       this.lastSocketError = { message: error.message };
       this.reachabilityTracker?.recordSocketStatus(
-        ChannelStatus.DOWN,
+        this.socket.active ? ChannelStatus.CONNECTING : ChannelStatus.DOWN,
         error.message
       );
-      if (!this.socket.active) {
-        this.reachabilityTracker?.recordReconnectStopped();
-      }
     });
 
     this.socket.io.on('reconnect_attempt', (attempt) => {
       this.reachabilityTracker?.recordReconnectAttempt(attempt);
     });
+  }
+
+  private clearJoinRoomTimer() {
+    if (!this.joinRoomTimerId) return;
+    clearTimeout(this.joinRoomTimerId);
+    this.joinRoomTimerId = undefined;
   }
 
   private async handleNewNotificationSocketEvent(data: { n_id: string }) {
@@ -670,6 +696,7 @@ export class Feed {
       reconnectionDelayMax: 10000,
     });
 
+    this.reachabilityTracker?.recordSocketStatus(ChannelStatus.CONNECTING);
     this.initializeSocketEvents();
   }
 
@@ -690,6 +717,10 @@ export class Feed {
         apiStatus: ApiResponseStatus.LOADING,
       });
       this.fetchCount();
+
+      if (this.config.distinctId) {
+        this.reachabilityTracker?.recordApiStatus(ChannelStatus.CONNECTING);
+      }
     }
     this.emitter.emit('feed.store_update', this.data);
 
@@ -1102,6 +1133,7 @@ export class Feed {
     this.reset();
     this.emitter.off('*');
     this.reachabilityTracker?.remove();
+    this.clearJoinRoomTimer();
     this.socket?.disconnect();
     this.config.feeds.removeInstance(this);
   }
