@@ -14,6 +14,7 @@ interface IFeedOptions {
   pageSize?: number;
   stores?: IStore[] | null;
   host?: { socketHost?: string; apiHost?: string };
+  reachability?: boolean;
 }
 ```
 
@@ -201,6 +202,54 @@ await feedClient.markBulkAsSeen(notificationIds: string[])
 | `actions`           | array   | List of call-to-action buttons (each with `url` and `name`).                                                                                                                                                                                                            |
 
 You can understand more about usage and details of message fields in [template documentation](https://docs.suprsend.com/docs/in-app-inbox-template).
+
+### Tracking reachability
+
+Opt in with `reachability: true` to know whether the feed is actually working for this user: whether the browser has internet, whether the socket is live, and whether the client can reach the feed notifications API. Useful for rendering a "No internet" banner or network not reachable banner.
+
+```typescript
+const feedClient = suprSendClient.feeds.initialize({ reachability: true });
+
+feedClient.emitter.on(
+  'feed.reachability_change',
+  (reachability: IFeedReachability) => {
+    // reachability.status is ONLINE | CONNECTING | DEGRADED | AUTH_ERROR | OFFLINE | UNKNOWN
+  }
+);
+```
+
+The current value can also be read at any time with `feedClient.reachability`, which is `undefined` when not opted in. The event fires only when the status, one of the two channels or `api.authError` actually changes, not on every request or reconnect attempt.
+
+```typescript
+interface IFeedReachability {
+  status: ReachabilityStatus;
+  socket: {
+    status: ChannelStatus;
+    lastConnectedAt?: number;
+    lastDisconnectedAt?: number;
+    disconnectReason?: string;
+    reconnectAttempts?: number;
+  };
+  api: {
+    status: ChannelStatus;
+    lastSuccessAt?: number;
+    lastFailureAt?: number;
+    authError?: boolean;
+  };
+  lastChangedAt: number;
+}
+```
+
+Each channel is `UNKNOWN`, `CONNECTING`, `UP` or `DOWN`. A channel stays `UNKNOWN` until it is used, and an `UNKNOWN` channel is ignored.
+
+| status       | Meaning                                                                                                                                      |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `OFFLINE`    | The browser reports no internet connection.                                                                                                  |
+| `UNKNOWN`    | The browser is online but neither channel has evidence yet. (occurs when `initializeSocketConnection` or `fetch` methods are not called yet) |
+| `CONNECTING` | No channel is down and at least one channel is `CONNECTING`.                                                                                 |
+| `DEGRADED`   | The browser is online and at least one channel is down.                                                                                      |
+| `AUTH_ERROR` | The browser is online but the API answered the initial feed load with `401` or `403`                                                         |
+| `ONLINE`     | The browser is online and every channel with evidence is up.                                                                                 |
 
 ## Example
 
