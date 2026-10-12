@@ -332,6 +332,7 @@ export interface IFeedOptions {
   stores?: IStore[] | null;
   host?: { socketHost?: string; apiHost?: string };
   reachability?: boolean;
+  sharedSocket?: boolean;
 }
 
 export enum ReachabilityStatus {

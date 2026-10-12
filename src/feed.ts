@@ -1,5 +1,5 @@
 import { createStore, StoreApi } from 'zustand/vanilla';
-import { io, Socket } from 'socket.io-client';
+import { io } from 'socket.io-client';
 import mitt, { Emitter } from 'mitt';
 import SuprSend from './main';
 import {
@@ -21,12 +21,14 @@ import {
   IFeedSocketError,
 } from './interface';
 import ReachabilityTracker from './reachability';
+import FeedSocketConnection, {
+  SOCKET_AUTH_ERROR_MESSAGE,
+} from './sharedSocket';
 import { windowSupport } from './utils';
 
 const DEFAULT_PAGE_SIZE = 20;
 const DEFAULT_TENANT_ID = 'default';
 const MAX_PAGE_SIZE = 100;
-const SOCKET_AUTH_ERROR_MESSAGE = 'Authentication Error: wrong auth token';
 const AUTH_ERROR_STATUS_CODES = [401, 403];
 const JOIN_ROOM_TIMEOUT_MS = 5000;
 const SUPPORT_EMAIL = 'support@suprsend.com';
@@ -40,6 +42,7 @@ const feedOptionsDefaults = {
   pageSize: DEFAULT_PAGE_SIZE,
   stores: null,
   reachability: false,
+  sharedSocket: true,
   host: {
     apiHost: 'https://inboxs.live',
     socketHost: 'https://betainbox.suprsend.com',
@@ -91,7 +94,8 @@ export class Feed {
   feedOptions: IFeedOptions;
   private config: SuprSend;
   private store: StoreApi<INotificationStore>;
-  private socket: Socket;
+  private socket?: FeedSocketConnection;
+  private reconcileOnConnect = false;
   private expiryTimerId?: ReturnType<typeof setInterval>;
   private joinRoomTimerId?: ReturnType<typeof setTimeout>;
   private fetchAbortController?: AbortController;
@@ -134,6 +138,10 @@ export class Feed {
 
     if (options?.reachability) {
       this.feedOptions.reachability = true;
+    }
+
+    if (options?.sharedSocket === false) {
+      this.feedOptions.sharedSocket = false;
     }
 
     this.validateStore();
@@ -211,44 +219,47 @@ export class Feed {
     });
   }
 
-  private initializeSocketEvents() {
-    this.socket.on('connect_error', async (error) => {
+  private initializeSocketEvents(socket: FeedSocketConnection) {
+    socket.on<[{ message: string }]>('connect_error', async (error) => {
       if (
-        error.message === SOCKET_AUTH_ERROR_MESSAGE &&
+        socket.isLeader &&
+        error?.message === SOCKET_AUTH_ERROR_MESSAGE &&
         this.config.authenticateOptions?.refreshUserToken &&
         this.config.userToken
       ) {
         await this.config.client().refreshExpiringUserToken();
 
         const latestUserToken = this.config.userToken;
+        const auth = socket.auth;
         if (
           latestUserToken &&
-          this.socket.auth['x-ss-signature'] !== latestUserToken
+          auth &&
+          auth['x-ss-signature'] !== latestUserToken
         ) {
-          this.socket.auth['x-ss-signature'] = latestUserToken;
+          auth['x-ss-signature'] = latestUserToken;
           setTimeout(() => {
-            this.socket.connect();
+            socket.reconnect();
           }, 1000);
         }
       }
     });
 
-    this.socket.on(
+    socket.on(
       'new_notification',
       this.handleNewNotificationSocketEvent.bind(this)
     );
 
-    this.socket.on(
+    socket.on(
       'notification_update',
       this.handleNoticationUpdateSocketEvent.bind(this)
     );
 
-    this.socket.on(
+    socket.on(
       'bulk_notification_update',
       this.handleBulkNotificationUpdateSocketEvent.bind(this)
     );
 
-    this.socket.on('reset_badge', async () => {
+    socket.on('reset_badge', async () => {
       const storeData = this.store.getState();
       this.store.setState({
         meta: { ...storeData.meta, badge: 0 },
@@ -256,17 +267,22 @@ export class Feed {
       this.emitter.emit('feed.store_update', this.data);
     });
 
-    this.initializeSocketStatusEvents();
+    this.initializeSocketStatusEvents(socket);
   }
 
-  private initializeSocketStatusEvents() {
-    this.socket.on('connect', () => {
+  private initializeSocketStatusEvents(socket: FeedSocketConnection) {
+    socket.on('connect', () => {
       this.lastSocketError = { message: '' };
       this.clearJoinRoomTimer();
 
+      if (this.reconcileOnConnect) {
+        this.reconcileOnConnect = false;
+        this.fetchCount();
+      }
+
       if (!this.reachabilityTracker) return;
 
-      if (this.socket.recovered) {
+      if (socket.recovered) {
         this.reachabilityTracker.recordSocketStatus(ChannelStatus.UP);
         return;
       }
@@ -279,32 +295,37 @@ export class Feed {
       }, JOIN_ROOM_TIMEOUT_MS);
     });
 
-    this.socket.on('joined_room', () => {
+    socket.on('leader_change', () => {
+      this.reconcileOnConnect = true;
+    });
+
+    socket.on('joined_room', () => {
       this.clearJoinRoomTimer();
       this.lastSocketError = { message: '' };
       this.reachabilityTracker?.recordSocketStatus(ChannelStatus.UP);
     });
 
-    this.socket.on('disconnect', (reason) => {
+    socket.on<[string]>('disconnect', (reason) => {
       this.clearJoinRoomTimer();
       if (reason === 'io client disconnect') return;
       this.lastSocketError = { message: reason };
       this.reachabilityTracker?.recordSocketStatus(
-        this.socket.active ? ChannelStatus.CONNECTING : ChannelStatus.DOWN,
+        socket.active ? ChannelStatus.CONNECTING : ChannelStatus.DOWN,
         reason
       );
     });
 
-    this.socket.on('connect_error', (error) => {
-      if (error.message === SOCKET_AUTH_ERROR_MESSAGE) return;
-      this.lastSocketError = { message: error.message };
+    socket.on<[{ message: string }]>('connect_error', (error) => {
+      const message = error?.message || '';
+      if (message === SOCKET_AUTH_ERROR_MESSAGE) return;
+      this.lastSocketError = { message };
       this.reachabilityTracker?.recordSocketStatus(
-        this.socket.active ? ChannelStatus.CONNECTING : ChannelStatus.DOWN,
-        error.message
+        socket.active ? ChannelStatus.CONNECTING : ChannelStatus.DOWN,
+        message
       );
     });
 
-    this.socket.io.on('reconnect_attempt', (attempt) => {
+    socket.on<[number]>('reconnect_attempt', (attempt) => {
       this.reachabilityTracker?.recordReconnectAttempt(attempt);
     });
   }
@@ -320,7 +341,7 @@ export class Feed {
 
     const response = await this.fetchDetails(data.n_id);
 
-    this.socket?.emit('new_notification_ack', {
+    this.socket?.emitToServer('new_notification_ack', {
       n_id: data.n_id,
       api_status: response.status !== RESPONSE_STATUS.ERROR,
     });
@@ -683,21 +704,38 @@ export class Feed {
   initializeSocketConnection() {
     if (this.socket) return;
 
-    this.socket = io(this.feedOptions.host?.socketHost, {
-      transports: ['websocket'],
-      auth: {
-        authorization: this.config.publicApiKey,
-        'x-ss-signature': this.config.userToken,
-        distinct_id: this.config.distinctId,
-        tenant_id: this.feedOptions.tenantId,
-        schema: '1',
-      },
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 10000,
-    });
+    const socketHost = this.feedOptions.host?.socketHost;
+    const createSocket = () =>
+      io(socketHost, {
+        transports: ['websocket'],
+        auth: {
+          authorization: this.config.publicApiKey,
+          'x-ss-signature': this.config.userToken,
+          distinct_id: this.config.distinctId,
+          tenant_id: this.feedOptions.tenantId,
+          schema: '1',
+        },
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 10000,
+      });
+
+    const key = [
+      'suprsend_feed_socket',
+      this.config.publicApiKey,
+      String(this.config.distinctId),
+      this.feedOptions.tenantId,
+      socketHost,
+    ].join(':');
+
+    this.socket = new FeedSocketConnection(
+      key,
+      createSocket,
+      this.feedOptions.sharedSocket !== false
+    );
 
     this.reachabilityTracker?.recordSocketStatus(ChannelStatus.CONNECTING);
-    this.initializeSocketEvents();
+    this.initializeSocketEvents(this.socket);
+    this.socket.connect();
   }
 
   // TODO: support other stores and pages
