@@ -221,27 +221,14 @@ export class Feed {
 
   private initializeSocketEvents(socket: FeedSocketConnection) {
     socket.on<[{ message: string }]>('connect_error', async (error) => {
-      if (
-        socket.isLeader &&
-        error?.message === SOCKET_AUTH_ERROR_MESSAGE &&
-        this.config.authenticateOptions?.refreshUserToken &&
-        this.config.userToken
-      ) {
-        await this.config.client().refreshExpiringUserToken();
-
-        const latestUserToken = this.config.userToken;
-        const auth = socket.auth;
-        if (
-          latestUserToken &&
-          auth &&
-          auth['x-ss-signature'] !== latestUserToken
-        ) {
-          auth['x-ss-signature'] = latestUserToken;
-          setTimeout(() => {
-            socket.reconnect();
-          }, 1000);
-        }
+      if (!socket.isLeader || error?.message !== SOCKET_AUTH_ERROR_MESSAGE) {
+        return;
       }
+
+      if (this.config.authenticateOptions?.refreshUserToken) {
+        await this.config.client().refreshExpiringUserToken();
+      }
+      socket.revive();
     });
 
     socket.on(
@@ -705,16 +692,17 @@ export class Feed {
     if (this.socket) return;
 
     const socketHost = this.feedOptions.host?.socketHost;
-    const createSocket = () =>
+    const createSocket = (getAuthToken: () => string | undefined) =>
       io(socketHost, {
         transports: ['websocket'],
-        auth: {
-          authorization: this.config.publicApiKey,
-          'x-ss-signature': this.config.userToken,
-          distinct_id: this.config.distinctId,
-          tenant_id: this.feedOptions.tenantId,
-          schema: '1',
-        },
+        auth: (cb) =>
+          cb({
+            authorization: this.config.publicApiKey,
+            'x-ss-signature': getAuthToken(),
+            distinct_id: this.config.distinctId,
+            tenant_id: this.feedOptions.tenantId,
+            schema: '1',
+          }),
         reconnectionDelay: 1000,
         reconnectionDelayMax: 10000,
       });
@@ -730,7 +718,8 @@ export class Feed {
     this.socket = new FeedSocketConnection(
       key,
       createSocket,
-      this.feedOptions.sharedSocket !== false
+      this.feedOptions.sharedSocket !== false,
+      () => this.config.userToken
     );
 
     this.reachabilityTracker?.recordSocketStatus(ChannelStatus.CONNECTING);
