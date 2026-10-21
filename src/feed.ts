@@ -29,6 +29,7 @@ const MAX_PAGE_SIZE = 100;
 const SOCKET_AUTH_ERROR_MESSAGE = 'Authentication Error: wrong auth token';
 const AUTH_ERROR_STATUS_CODES = [401, 403];
 const JOIN_ROOM_TIMEOUT_MS = 5000;
+const SOCKET_PAUSE_DELAY_MS = 60000;
 const SUPPORT_EMAIL = 'support@suprsend.com';
 const DEFAULT_STORE = {
   storeId: '$suprsend_default_store',
@@ -40,6 +41,7 @@ const feedOptionsDefaults = {
   pageSize: DEFAULT_PAGE_SIZE,
   stores: null,
   reachability: false,
+  disconnectWhenHidden: true,
   host: {
     apiHost: 'https://inboxs.live',
     socketHost: 'https://betainbox.suprsend.com',
@@ -98,6 +100,17 @@ export class Feed {
   private reachabilityTracker?: ReachabilityTracker;
   private lastApiError: IFeedApiError = { status_code: null, message: '' };
   private lastSocketError: IFeedSocketError = { message: '' };
+  private pauseTimerId?: ReturnType<typeof setTimeout>;
+  private hiddenAt?: number;
+  private socketPaused = false;
+  private refreshOnConnect = false;
+  private handleVisibilityChange = () => {
+    if (document.visibilityState === 'hidden') {
+      this.handleTabHidden();
+    } else {
+      this.handleTabVisible();
+    }
+  };
   readonly emitter: Emitter<InboxEmitterEvents> = mitt();
 
   constructor(config: SuprSend, options: IFeedOptions) {
@@ -134,6 +147,10 @@ export class Feed {
 
     if (options?.reachability) {
       this.feedOptions.reachability = true;
+    }
+
+    if (options?.disconnectWhenHidden === false) {
+      this.feedOptions.disconnectWhenHidden = false;
     }
 
     this.validateStore();
@@ -213,8 +230,9 @@ export class Feed {
 
   private initializeSocketEvents() {
     this.socket.on('connect_error', async (error) => {
+      if (error.message !== SOCKET_AUTH_ERROR_MESSAGE) return;
+
       if (
-        error.message === SOCKET_AUTH_ERROR_MESSAGE &&
         this.config.authenticateOptions?.refreshUserToken &&
         this.config.userToken
       ) {
@@ -227,9 +245,16 @@ export class Feed {
         ) {
           this.socket.auth['x-ss-signature'] = latestUserToken;
           setTimeout(() => {
+            if (this.socketPaused) return;
             this.socket.connect();
           }, 1000);
+          return;
         }
+      }
+
+      if (this.refreshOnConnect) {
+        this.refreshOnConnect = false;
+        this.refreshFeed();
       }
     });
 
@@ -263,6 +288,11 @@ export class Feed {
     this.socket.on('connect', () => {
       this.lastSocketError = { message: '' };
       this.clearJoinRoomTimer();
+
+      if (this.refreshOnConnect) {
+        this.refreshOnConnect = false;
+        this.refreshFeed();
+      }
 
       if (!this.reachabilityTracker) return;
 
@@ -630,6 +660,71 @@ export class Feed {
     };
   }
 
+  private refreshFeed() {
+    const storeData = this.store.getState();
+    if (storeData.isFirstFetch) return;
+
+    if (this.fetchAbortController) {
+      this.fetchAbortController.abort();
+      this.fetchAbortController = undefined;
+    }
+
+    this.store.setState({
+      ...initialFeedStore,
+      store: storeData.store,
+      meta: storeData.meta,
+    });
+
+    this.fetch();
+  }
+
+  private handleTabHidden() {
+    this.hiddenAt = Date.now();
+    if (this.socketPaused || this.pauseTimerId) return;
+    this.pauseTimerId = setTimeout(
+      this.pauseSocket.bind(this),
+      SOCKET_PAUSE_DELAY_MS
+    );
+  }
+
+  private handleTabVisible() {
+    this.clearPauseTimer();
+    const wasAway =
+      this.socketPaused ||
+      (!!this.hiddenAt && Date.now() - this.hiddenAt >= SOCKET_PAUSE_DELAY_MS);
+    this.hiddenAt = undefined;
+
+    if (wasAway) {
+      this.resumeSocket();
+    }
+  }
+
+  private pauseSocket() {
+    this.pauseTimerId = undefined;
+    this.socketPaused = true;
+    this.clearJoinRoomTimer();
+    this.socket.disconnect();
+  }
+
+  private resumeSocket() {
+    this.refreshOnConnect = true;
+    this.socketPaused = false;
+    this.clearJoinRoomTimer();
+
+    this.socket.off();
+    this.socket.io.off();
+    this.socket.disconnect();
+
+    this.createSocket();
+    this.reachabilityTracker?.recordSocketConnected();
+  }
+
+  private clearPauseTimer() {
+    if (!this.pauseTimerId) return;
+    clearTimeout(this.pauseTimerId);
+    this.pauseTimerId = undefined;
+  }
+
   async changeActiveStore(storeId: string) {
     const storeData = this.store.getState();
 
@@ -680,9 +775,7 @@ export class Feed {
     return this.reachabilityTracker?.reachability;
   }
 
-  initializeSocketConnection() {
-    if (this.socket) return;
-
+  private createSocket() {
     this.socket = io(this.feedOptions.host?.socketHost, {
       transports: ['websocket'],
       auth: {
@@ -695,9 +788,25 @@ export class Feed {
       reconnectionDelay: 1000,
       reconnectionDelayMax: 10000,
     });
-
-    this.reachabilityTracker?.recordSocketStatus(ChannelStatus.CONNECTING);
     this.initializeSocketEvents();
+  }
+
+  initializeSocketConnection() {
+    if (this.socket) return;
+
+    this.createSocket();
+    this.reachabilityTracker?.recordSocketStatus(ChannelStatus.CONNECTING);
+
+    if (
+      typeof document === 'undefined' ||
+      !this.feedOptions.disconnectWhenHidden
+    ) {
+      return;
+    }
+    document.addEventListener('visibilitychange', this.handleVisibilityChange);
+    if (document.visibilityState === 'hidden') {
+      this.handleTabHidden();
+    }
   }
 
   // TODO: support other stores and pages
@@ -1134,6 +1243,13 @@ export class Feed {
     this.emitter.off('*');
     this.reachabilityTracker?.remove();
     this.clearJoinRoomTimer();
+    this.clearPauseTimer();
+    if (typeof document !== 'undefined') {
+      document.removeEventListener(
+        'visibilitychange',
+        this.handleVisibilityChange
+      );
+    }
     this.socket?.disconnect();
     this.config.feeds.removeInstance(this);
   }
