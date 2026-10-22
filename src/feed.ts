@@ -104,6 +104,7 @@ export class Feed {
   private hiddenAt?: number;
   private socketPaused = false;
   private refreshOnConnect = false;
+  private socketAuthFailed = false;
   private handleVisibilityChange = () => {
     if (document.visibilityState === 'hidden') {
       this.handleTabHidden();
@@ -231,6 +232,7 @@ export class Feed {
   private initializeSocketEvents() {
     this.socket.on('connect_error', async (error) => {
       if (error.message !== SOCKET_AUTH_ERROR_MESSAGE) return;
+      this.socketAuthFailed = true;
 
       if (
         this.config.authenticateOptions?.refreshUserToken &&
@@ -287,6 +289,7 @@ export class Feed {
   private initializeSocketStatusEvents() {
     this.socket.on('connect', () => {
       this.lastSocketError = { message: '' };
+      this.socketAuthFailed = false;
       this.clearJoinRoomTimer();
 
       if (this.refreshOnConnect) {
@@ -680,7 +683,13 @@ export class Feed {
 
   private handleTabHidden() {
     this.hiddenAt = Date.now();
-    if (this.socketPaused || this.pauseTimerId) return;
+    if (
+      !this.feedOptions.disconnectWhenHidden ||
+      this.socketPaused ||
+      this.pauseTimerId
+    ) {
+      return;
+    }
     this.pauseTimerId = setTimeout(
       this.pauseSocket.bind(this),
       SOCKET_PAUSE_DELAY_MS
@@ -691,12 +700,18 @@ export class Feed {
     this.clearPauseTimer();
     const wasAway =
       this.socketPaused ||
-      (!!this.hiddenAt && Date.now() - this.hiddenAt >= SOCKET_PAUSE_DELAY_MS);
+      (!!this.feedOptions.disconnectWhenHidden &&
+        !!this.hiddenAt &&
+        Date.now() - this.hiddenAt >= SOCKET_PAUSE_DELAY_MS);
     this.hiddenAt = undefined;
 
-    if (wasAway) {
+    if (wasAway || this.isSocketDown()) {
       this.resumeSocket();
     }
+  }
+
+  private isSocketDown() {
+    return !this.socket.active && !this.socketAuthFailed;
   }
 
   private pauseSocket() {
@@ -709,6 +724,7 @@ export class Feed {
   private resumeSocket() {
     this.refreshOnConnect = true;
     this.socketPaused = false;
+    this.socketAuthFailed = false;
     this.clearJoinRoomTimer();
 
     this.socket.off();
@@ -797,12 +813,7 @@ export class Feed {
     this.createSocket();
     this.reachabilityTracker?.recordSocketStatus(ChannelStatus.CONNECTING);
 
-    if (
-      typeof document === 'undefined' ||
-      !this.feedOptions.disconnectWhenHidden
-    ) {
-      return;
-    }
+    if (typeof document === 'undefined') return;
     document.addEventListener('visibilitychange', this.handleVisibilityChange);
     if (document.visibilityState === 'hidden') {
       this.handleTabHidden();
