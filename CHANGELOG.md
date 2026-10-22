@@ -1,5 +1,17 @@
 # Changelog
 
+## 5.4.0
+
+### Added
+
+- `disconnectWhenHidden` option in `feeds.initialize()` (default `true`): disconnects the feed socket after the tab is hidden for 1 minute, and reconnects and refreshes the feed when the tab is visible again. Pass `false` to keep the socket always connected.
+
+### Fixed
+
+- The feed socket now reconnects when the tab becomes visible if the server had closed it (e.g. too many tabs open).
+
+[5.4.0]: https://github.com/suprsend/suprsend-web-sdk/compare/v5.3.0...v5.4.0
+
 ## 5.3.0
 
 ### Added

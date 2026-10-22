@@ -15,6 +15,7 @@ interface IFeedOptions {
   stores?: IStore[] | null;
   host?: { socketHost?: string; apiHost?: string };
   reachability?: boolean;
+  disconnectWhenHidden?: boolean; // default true: disconnects the socket after the tab is hidden for 1 min, reconnects and refreshes the feed when it's visible again
 }
 ```
 
