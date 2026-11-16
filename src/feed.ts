@@ -1187,30 +1187,11 @@ export class Feed {
   }
 
   async markAllAsArchived() {
-    const storeData = this.store.getState();
-
-    // optimistic update, feed is refreshed on socket event
-    const meta = { ...storeData.meta, badge: 0 };
-    this.feedOptions.stores?.forEach((store) => {
-      if (!store.query?.archived) meta[store.storeId] = 0;
-    });
-
-    if (storeData.store?.query?.archived) {
-      this.store.setState({ meta });
-    } else {
-      this.store.setState({
-        meta,
-        notifications: [],
-        pageInfo: { ...storeData.pageInfo, total: 0, hasMore: false },
-      });
-    }
-
     const url = this.getUrl('archive_all', {
       tenant_id: this.feedOptions.tenantId,
       distinct_id: this.config.distinctId,
     });
 
-    this.emitter.emit('feed.store_update', this.data);
     return await this.config.client().request({ type: 'patch', url });
   }
 
