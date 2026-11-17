@@ -1,5 +1,13 @@
 # Changelog
 
+## 5.5.0
+
+### Added
+
+- `feedClient.markAllAsArchived()` archives all of the user's notifications in the current tenant, across every store. Archiving runs in the background and can't be undone. The feed refreshes automatically once it completes.
+
+[5.5.0]: https://github.com/suprsend/suprsend-web-sdk/compare/v5.4.0...v5.5.0
+
 ## 5.4.0
 
 ### Added

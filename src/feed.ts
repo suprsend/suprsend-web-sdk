@@ -481,6 +481,10 @@ export class Feed {
       });
     }
 
+    if (data.action === 'archive' && data.notification_ids === 'all') {
+      this.refreshFeed();
+    }
+
     if (data.action === 'seen' && Array.isArray(data.notification_ids)) {
       this.store.setState({
         notifications: storeData.notifications.map((notification) => {
@@ -1179,6 +1183,15 @@ export class Feed {
     });
 
     this.emitter.emit('feed.store_update', this.data);
+    return await this.config.client().request({ type: 'patch', url });
+  }
+
+  async markAllAsArchived() {
+    const url = this.getUrl('archive_all', {
+      tenant_id: this.feedOptions.tenantId,
+      distinct_id: this.config.distinctId,
+    });
+
     return await this.config.client().request({ type: 'patch', url });
   }
 
